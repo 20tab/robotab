@@ -1,0 +1,229 @@
+<<!DOCTYPE html>
+<html>
+<head>
+    <title>Robotab</title>
+</head>
+<body>
+<script src="static/js/three.min.js"></script>
+<script src="static/js/threex.keyboardstate.js"></script>
+
+<div id="ThreeJS"></div>
+<div id="hud"># waiting for players...</div>
+
+<script>
+    var ws;
+
+    var ARENA_WIDTH = 800;
+    var ARENA_HEIGHT = 600;
+
+    var scene, camera, eagleCamera, backCamera, renderer;
+    var  superlight;
+    var keyboard;
+
+    var container;
+
+    var name = location.search.substring(1);
+    var players = {};
+
+    function init(){
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera( 45, ARENA_WIDTH / ARENA_HEIGHT, 0.1, 10000 );
+
+        camera.position.x = 0;
+        camera.position.y = 800;
+        camera.position.z = 0;
+
+        eagleCamera = new THREE.PerspectiveCamera( 45, ARENA_WIDTH / ARENA_HEIGHT, 0.1, 10000 );
+
+        eagleCamera.lookAt(scene.position);
+        eagleCamera.position.x = 0;
+        eagleCamera.position.y = 5000;
+        eagleCamera.position.z = 0;
+        eagleCamera.rotation.x = -Math.PI/2;
+
+        scene.add(camera);
+        scene.add(eagleCamera);
+
+        backCamera = new THREE.PerspectiveCamera( 45, ARENA_WIDTH / ARENA_HEIGHT, 0.1, 10000 );
+
+        keyboard = new THREEx.KeyboardState();
+
+        renderer = new THREE.WebGLRenderer( {antialias: true} );
+        renderer.setSize(ARENA_WIDTH, ARENA_HEIGHT);
+
+        // renderer.shadowMapEnabled = true;
+        // renderer.shadowCameraNear = 3;
+        // renderer.shadowCameraFar = camera.far;
+        // renderer.shadowCameraFov = 50;
+
+        // renderer.shadowMapBias = 0.0039;
+        // renderer.shadowMapDarkness = 0.5;
+        // renderer.shadowMapWidth = 1024;
+        // renderer.shadowMapHeight = 1024;
+
+        container = document.getElementById("ThreeJS");
+        container.appendChild(renderer.domElement);
+
+        var ambient = new THREE.AmbientLight( 0x333333 );
+        scene.add(ambient);
+
+        var floorTexture = new THREE.ImageUtils.loadTexture( 'static/image/metal17.jpg' );
+        floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+        floorTexture.repeat.set(10, 10);
+        var floorMaterial = new THREE.MeshPhongMaterial( {map:floorTexture, side: THREE.DoubleSide} );
+        var floorGeometry = new THREE.PlaneGeometry((4000, 4000);
+        var floor = new THREE.Mesh(floorMaterial, floorGeometry);
+        floor.postion.y = -0.5;
+        floor.rotation.x = Math.PI / 2;
+        floor.receiveShadow = true;
+
+        scene.add(floor);
+
+        var light = new THREE.SpotLight( 0xffffff, 1 );
+        light.position.set(-100, 150, 0);
+        light.rotation.x += 1.9;
+
+        scene.add(light);
+
+        superlight = light;
+        light.castShadow = true;
+        // var spherelight_geom = new THREE.SphereGeometry( 20, 16, 16 );
+        // var blueMaterial = new THREE.MeshBasicMaterial( { color: 0x00fff00} );
+        // var spherelight = new THREE.Mesh( spherelight_geom, blueMaterial );
+
+        // scene.add(spherelight);
+        // spherelight.castShadow = true;
+        // spherelight.position.set(-100, 150, 0);
+
+        var light = THREE.DirectionalLight( 0xffffff, 0.7 );
+        light.position.set( 0, 10, 0 );
+        scene.add( light );
+
+        var manager = new THREE.LoadingManager();
+        manager.onProgress = function ( item, loaded, total ) {
+            console.log( item, loaded, total );
+        };
+
+        var muro_texture = new THREE.Texture();
+        var muro_loader = new THREE.ImageLoader(manager);
+        muro_loader.load( 'static/image/muro_texture.jpg', function ( image ) {
+            muro_texture.image = image;
+            muro_texture.needsUpdate = true;
+        });
+
+        var Muro;
+
+        var arena_loader = new THREE.OBJLoader(manager);
+        arena_loader.load('muro.obj', function (object){
+            object.traverse( function (child) {
+                if (child instanceof THREE.Mesh) {
+                    child.materia.map = muro_texture;
+                }
+            });
+            object.children[0].geometry.computeFaceNormals();
+            var  geometry = object.children[0].geometry;
+            THREE.GeometryUtils.center(geometry);
+
+            Muro = object;
+            Muro.scale.set(50,50,50);
+
+            var muro = Muro.clone();
+            muro.position.set(-1000, 88, -1600);
+            scene.add(muro);
+
+            var muro = Muro.clone();
+            muro.position.set(0, 88, -1600);
+            scene.add(muro);
+
+            var muro = Muro.clone();
+            muro.position.set(1000, 88, -1600);
+            scene.add(muro);
+
+            var muro = Muro.clone();
+            muro.rotation.y = -Math.PI/2;
+            muro.position.set(-1600, 88, -1000);
+            scene.add(muro);
+
+            var muro = Muro.clone();
+            muro.rotation.y = -Math.PI/2;
+            muro.position.set(-1600, 88, 0);
+            scene.add(muro);
+
+            var muro = Muro.clone();
+            muro.rotation.y = -Math.PI/2;
+            muro.position.set(-800, 88, 500);
+            scene.add(muro);
+
+
+            var muro = Muro.clone();
+            muro.rotation.y = -Math.PI/2;
+            muro.position.set(800, 88, -500);
+            scene.add(muro);
+
+            var muro = Muro.clone();
+            muro.rotation.y = -Math.PI/2;
+            muro.position.set(800, 88, 0);
+            scene.add(muro);
+
+            var muro = Muro.clone();
+            muro.rotation.y = -Math.PI/2;
+            muro.position.set(800, 88, 500);
+            scene.add(muro);
+
+            var muro = Muro.clone();
+            muro.position.set(-500, 88, 800);
+            scene.add(muro);
+
+            var muro = Muro.clone();
+            muro.position.set(0, 88, 800);
+            scene.add(muro);
+
+            var muro = Muro.clone();
+            muro.position.set(500, 88, 800);
+            scene.add(muro);
+
+        });
+
+
+
+
+    }
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
