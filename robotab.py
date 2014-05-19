@@ -1,28 +1,102 @@
 from random import choice
 
 import uwsgi
+import gevent
+import gevent.queue
+import gevent.event
+import gevent.select
 import redis
-import math3d
-from gevent import Greenlet, select, sleep
+import math
+
+
+class Robot(object):
+
+    def __init__(self, x, y, r):
+        self.height = 75
+        self.width = 75
+        self.scale = 1
+        self.x = x
+        self.y = y
+        self.r = r
+
+    def translate(self, amount):
+        amount_x = math.sin(self.r) * amount
+        amount_y = math.cos(self.r) * amount
+        self.x += round(amount_x)
+        self.y += round(amount_y)
+        #print('x:{}  y:{}  r:{}'.format(self.x, self.y, self.r))
+
+    def rotateR(self):
+        self.r = 2 * math.pi if self.r <= 0 else self.r - 0.1
+
+    def rotateL(self):
+        self.r = 0 if self.r >= 2 * math.pi else self.r + 0.1
+
+    def collide(self, x, y, width, height):
+
+        return (abs(self.x - x) * 2 < (self.width * self.scale + width)) and\
+            (abs(self.y - y) * 2 < (self.height * self.scale + height))
 
 
 class Arena(object):
 
-    def __init__(self, max_players=5, warmup=30):
-        self.greenlets = {'engine': self.engine_start, 'start': self.start}
+    def __init__(self, max_players=8, warmup=30):
+        self.greenlets = {
+            #'engine': self.engine_start,
+            'start': self.start
+        }
+
         self.animations = []
         self.players = {}
-        self.waiting_players = {}
+        self.waiting_players = []
         self.max_players = max_players
         self.warmup = warmup
-        self.warming_up = False
+        self.started = False
+        self.finished = False
+        #self.warming_up = False
+        self.walls = (
+            #sc_x,  sc_y,   sc_z,     x,       y,     z,            r
+            (200,     100,     50,     0,     150, -1950,            0),
+            (200,     100,     50, -1950,     150,     0, -math.pi / 2),
+            (200,     100,     50,  1950,     150,     0, -math.pi / 2),
+            (200,     100,     50,     0,     150,  1950,            0),
+
+            ( 50,     50,     30,  -730,     150, -1200,            0),
+            ( 50,     50,     30,   730,     150, -1200,            0),
+
+            ( 50,     50,     30, -1200,     150,  -730, -math.pi / 2),
+            ( 50,     50,     30, -1200,     150,   730, -math.pi / 2),
+
+            ( 50,     50,     30,  1200,     150,  -730, -math.pi / 2),
+            ( 50,     50,     30,  1200,     150,   730, -math.pi / 2),
+
+            ( 50,     50,     30,  -730,     150,  1200,            0),
+            ( 50,     50,     30,   730,     150,  1200,            0),
+        )
+
+        self.spawn_points = (
+            #    x,     y,               r
+            #(    0,  1775,         math.pi),
+            #(    0, -1775,               0),
+            (-1775,  1775, 3 * math.pi / 4),
+            #(-1775,     0,     math.pi / 2),
+            #( 1775,     0, 3 * math.pi / 2),
+            ( 1775,  1775, 5 * math.pi / 4),
+            ( 1775, -1775, 7 * math.pi / 4),
+            (-1775, -1775,     math.pi / 4),
+            (-1100,  1100, 3 * math.pi / 4),
+            ( 1100,  1100, 5 * math.pi / 4),
+            ( 1100, -1100, 7 * math.pi / 4),
+            (-1100, -1100,     math.pi / 4),
+        )
 
         self.arena = "arena{}".format(uwsgi.worker_id())
         self.redis = redis.StrictRedis()
-        self.channel = redis.pubsub()
+        self.channel = self.redis.pubsub()
         self.channel.subscribe(self.arena)
 
         self.bonus_malus_queue = ['haste', 'giant', 'heal', 'power']
+        self.spawn_iterator = self.spawn_points.__iter__()
 
     def broadcast(self, msg):
         self.redis.publish(self.arena, 'arena:{}'.format(msg))
@@ -36,6 +110,7 @@ class Arena(object):
 
     def attack_cmd_handler(self, player, cmd):
         if cmd == 'AT':
+            #print cmd
             player.bullet.shoot()
             player.attack = 1
             return True
@@ -47,27 +122,31 @@ class Arena(object):
 
     def cmd_handler(self, player, cmd):
         if cmd == 'rl':
-            player.math.rotateY(0.2)
+            player.robot.rotateL()
             return True
 
         if cmd == 'rr':
-            player.math.rotateY(-0.2)
+            player.robot.rotateR()
             return True
 
         if cmd == 'fw':
-            old = player.math.position_tuple()
-            player.math.translateZ(15)
+            old_x = player.robot.x
+            old_y = player.robot.y
+            player.robot.translate(15)
             if (self.collision(player)):
-                player.math.set_position(old)
-                player.math.translateZ(-60)
+                player.robot.x = old_x
+                player.robot.y = old_y
+                player.robot.translate(-15)
             return True
 
         if cmd == 'bw':
-            old = player.math.position_tuple()
-            player.math.translateZ(-15)
+            old_x = player.robot.x
+            old_y = player.robot.y
+            player.robot.translate(-15)
             if (self.collision(player)):
-                player.math.set_position(old)
-                player.math.translateZ(60)
+                player.robot.x = old_x
+                player.robot.y = old_y
+                player.robot.translate(15)
             return True
 
         return False
@@ -77,25 +156,40 @@ class Arena(object):
             if self.players[p] == player:
                 continue
             #check for body collision
-            if player.math.circleCollide(self.players[p].math.position.x,
-                                         self.players[p].math.position.z,
-                                         self.players[p].math.radius * self.players[p].math.scale):
+            if player.robot.collide(
+                self.players[p].robot.x,
+                self.players[p].robot.y,
+                self.players[p].robot.width * self.players[p].robot.scale,
+                self.players[p].robot.height * self.players[p].robot.scale,
+            ):
                 if player.attack == 1:
                     if self.players[p].attack == 0:
-                        self.players[p].energy -= 1.0
+                        self.players[p].damage(1.0, player.name)
                     else:
-                        self.players[p].energy -= 0.1
+                        self.players[p].damage(0.1, player.name)
                 elif self.players[p]. attack == 1:
-                    player.energy -= 1.0
+                    player.damage(1.0, 'himself')
                 self.broadcast("bm,collision between {} and {}".format(player.name, p))
                 return True
-            return False
+        for wall in self.walls:
+            if wall[6] == 0:
+                height = 1 * wall[2]
+                width = 20 * wall[0]
+            else:
+                height = 20 * wall[0]
+                width = 1 * wall[2]
+            if player.robot.collide(wall[3], wall[5], width, height):
+                return True
+        return False
 
     def engine_start(self):
-        del self.channel.greenlets['engine']
+        #del self.greenlets['engine']
         print('engine started')
         while True:
             if len(self.players) == 0:
+                break
+            if len(self.game.players) == 1:
+                self.game.winning_logic()
                 break
             t = uwsgi.micros() / 1000.0
             for p in self.players.keys():
@@ -106,7 +200,8 @@ class Arena(object):
                         player.update_gfx()
                     player.cmd = None
                 if player.attack_cmd:
-                    draw = self.attack_cmd_handler(player, player.cmd)
+                    draw = self.attack_cmd_handler(player, player.attack_cmd)
+                    # print player.attack_cmd
                     if draw:
                         player.update_gfx()
                     player.attack_cmd = None
@@ -115,43 +210,47 @@ class Arena(object):
             t1 = uwsgi.micros() / 1000.0
             delta = t1 - t
             if delta < 33.33:
-                sleep((33.33 - delta) / 1000.0)
-
-        self.channel.greenlets['engine'] = self.engine_start
+                gevent.sleep((33.33 - delta) / 1000.0)
+        self.finished = True
+        #self.greenlets['engine'] = self.engine_start
         print("engine ended")
 
     def start(self):
         del self.greenlets['start']
-        self.warming_up = True
+        #self.warming_up = True
         warmup = self.warmup
         while warmup > 0:
-            sleep(1.0)
+            gevent.sleep(1.0)
             self.broadcast("warmup,{} seconds to start".format(warmup))
             warmup -= 1
             print(warmup)
-        self.warmup = False
-        print('FIGHT!!!')
-        sleep()
+        #self.warmup = False
+
+        gevent.spawn(self.engine_start)
+        #gevent.sleep()
         self.started = True
-        sleep()
         self.broadcast("FIGHT!!!")
+        gevent.sleep()
         # this queue is initialized on game startup
         # with a random list of bonus/malus items to drop on the arena
         # it is consumed every 10 seconds
         # consume bonus_malus_queue
-        for el in range(5):
-            sleep(3.0)
+        while not self.finished:
+            gevent.sleep(10.0)
             self.broadcast("bm,{}".format(choice(self.bonus_malus_queue)))
-        sleep(1.0)
+            self.broadcast("bm,{}".format(choice(self.bonus_malus_queue)))
+            self.broadcast("bm,{}".format(choice(self.bonus_malus_queue)))
+        gevent.sleep(1.0)
         self.broadcast("end")
+        self.finished = False
         self.started = False
         self.greenlets['start'] = self.start
-        sleep()
+        gevent.sleep()
 
 
 def wait_for_game():
     while True:
-        sleep(1)
+        gevent.sleep(1)
 
 
 # place up to 8 waiting_players
@@ -163,23 +262,21 @@ def winning_logic():
 
 class Player(object):
 
-    def __init__(self, game, name, fd):
+    def __init__(self, game, name, fd, x, y, r):
         self.game = game
         self.name = name
         self.fd = fd
 
-        self.math = math3d.MathPlayer(0.0, 50, 0.0)
-        self.math.translateZ(-580)
-        self.math.translateX(-580)
+        self.robot = Robot(x, y, r)
 
         self.attack = 0
         self.energy = 100.0
 
         self.arena = "arena{}".format(uwsgi.worker_id())
         self.redis = redis.StrictRedis()
-        self.channel = redis.pubsub()
+        self.channel = self.redis.pubsub()
         self.channel.subscribe(self.arena)
-        self.redis_fd = self.channel.connection._socket.fileno()
+        self.redis_fd = self.channel.connection._sock.fileno()
 
         self.cmd = None
         self.attack_cmd = None
@@ -188,18 +285,31 @@ class Player(object):
         # check if self.energy is 0, in such a case
         # trigger the kill procedure removing the player from the list
         # if after the death a single player remains, trigger the winning procedure
-        def damage(self, amount):
-            pass
+    def damage(self, amount, attacker):
+        self.energy -= amount
+        self.update_gfx()
+        if self.energy <= 0:
+            self.game.broadcast(
+                '{} was killed by {}'.format(self.name, attacker)
+            )
+            self.end()
 
     def end(self):
-        print("ending...")
         del self.game.players[self.name]
 
     def send_all(self, msg):
         self.redis.publish(self.arena, msg)
 
     def update_gfx(self):
-        msg = "{}:{},{},{},{},{},{}".format(self.name, self.math.rotation.y, self.math.position.x, self.math.position.y, self.math.position.z, self.attack, self.energy)
+        msg = "{}:{},{},{},{},{},{}".format(
+            self.name,
+            self.robot.r,
+            self.robot.x,
+            50,
+            self.robot.y,
+            self.attack,
+            self.energy
+        )
         self.send_all(msg)
 
 
@@ -207,7 +317,7 @@ class Bullet(object):
 
     def __init__(self, game, player, _range=1000.0):
         self.game = game
-        self.math = math3d.MathPlayer(0.0, 50, 0.0)
+        self.robot = Robot(0.0, 0.0, 0.0)
         self.player = player
         self.is_shooting = 0
         self._range = _range
@@ -215,21 +325,28 @@ class Bullet(object):
     def shoot(self):
         if self.is_shooting > 0:
             return
-        self.math.position.x = self.player.math.position.x
-        self.math.position.y = self.player.math.position.y
-        self.math.position.z = self.player.math.position.z
-        self.math.rotation.y = self.player.math.rotation.y
+        self.robot.x = self.player.robot.x
+        self.robot.y = self.player.robot.y
+        self.robot.r = self.player.robot.r
         self.is_shooting = self._range
-        self.player.energy -= 0.1
+        self.player.damage(0.1, 'himself')
         self.game.animations.append(self)
 
     def animate(self):
-        self.math.translateZ(50)
+        self.robot.translate(50)
         if self.collision():
             self.is_shooting = 0
         else:
             self.is_shooting -= 50
-        msg = "!{}:{},{},{},{},{}".format(self.player.name, self.math.rotation.y, self.math.position.x, self.math.position.y, self.math.position.z, self.is_shooting)
+        msg = "!:{}:{},{},{},{},{}".format(
+            self.player.name,
+            self.robot.r,
+            self.robot.x,
+            50,
+            self.robot.y,
+            self.is_shooting
+        )
+
         self.player.send_all(msg)
         if self.is_shooting <= 0:
             self.game.animations.remove(self)
@@ -238,67 +355,78 @@ class Bullet(object):
         for p in self.game.players.keys():
             if self.game.players[p] == self.player:
                 continue
-
-            if self.math.circleCollide(self.game.players[p].math.position.x,
-                                       self.game.players[p].math.position.z,
-                                       self.game.players[p].math.radius * self.game.players[p.math.scale]):
-                self.game.players[p].energy -= 10.0
-                self.game.players[p].update_gfx()
+            if self.robot.collide(
+                self.game.players[p].robot.x,
+                self.game.players[p].robot.y,
+                self.game.players[p].robot.width * self.game.players[p].robot.scale,
+                self.game.players[p].robot.height * self.game.players[p].robot.scale,
+            ):
+                self.game.players[p].damage(10, self.player.name)
                 return True
 
+        for wall in self.game.walls:
+            if wall[6] == 0:
+                height = 1 * wall[2]
+                width = 19.5 * wall[0]
+            else:
+                height = 19.5 * wall[0]
+                width = 1 * wall[2]
+            if self.robot.collide(wall[3], wall[5], width, height):
+                return True
         return False
 
 
 class Robotab(Arena):
 
     def __call__(self, e, sr):
-        if e['PATH_INFO'] != '/robotab':
-            raise Exception("only /robotab is allowed")
-        uwsgi.websocket_handshake()
+        if e['PATH_INFO'] == '/robotab':
+            uwsgi.websocket_handshake()
+            uwsgi.websocket_send('walls:{}'.format(str(self.walls).replace('),', ';').translate(None, "()")))
+            try:
+                robot_coordinates = self.spawn_iterator.next()
+            except StopIteration:
+                self.spawn_iterator = self.spawn_points.__iter__()
+                robot_coordinates = self.spawn_iterator.next()
+            player = Player(self, e['QUERY_STRING'], uwsgi.connection_fd(), *robot_coordinates)
 
-        player = Player(self, e['QUERY_STRING'], uwsgi.connection_fd())
-        self.players[player.name] = player
+            for greenlet in self.greenlets:
+                if len(self.players) >= 1:
+                    gevent.spawn(self.greenlets[greenlet])
 
-        for greenlet in self.greenlets:
-            if greenlet != 'start' or len(self.players > 1):
-                Greenlet.spawn(self.greenlets[greenlet])
-            else:
-                self.waiting_players[player.name] = player
-                print("hey {}, game already started, waiting for next one...".format(player.name))
+            if self.started or len(self.players > 8):
+                self.waiting_players.append(player)
+                print("hey {}, game already started or is full, waiting for next one...".format(player.name))
                 wait_for_game()
-
-        player.update_gfx()
-        # ?!?!?!?!?!?!?!?!!?!?!?!??!?!
-        for p in self.players.keys():
-            if self.players[p] != player:
+            else:
+                self.players[player.name] = player
+            for p in self.players.keys():
                 self.players[p].update_gfx()
-        # !?!??!?!?!?!?!?!?!??!?!?!?!?!
 
-        while True:
-            ready = select.select([player.fd, player.redis_fd], [], [], timeout=4.0)
+            while True:
+                ready = gevent.select.select([player.fd, player.redis_fd], [], [], timeout=4.0)
 
-            # ?!?!?!?!?!?!?!?!!?!?!?!??!?!
-            if not ready[0]:
-                uwsgi.websocket_recv_nb()
-            # ?!?!?!?!?!?!?!?!!?!?!?!??!?!
+                # ?!?!?!?!?!?!?!?!!?!?!?!??!?!
+                if not ready[0]:
+                    uwsgi.websocket_recv_nb()
+                # ?!?!?!?!?!?!?!?!!?!?!?!??!?!
 
-            for fd in ready[0]:
-                if fd == player.fd:
-                    # ?!?!?!?!?!?!?!?!!?!?!?!??!?!
-                    try:
-                        msg = uwsgi.websocket_recv_nb()
-                    except IOError:
-                        import sys
-                        print sys.exc_info()
-                        player.end()
-                        return [""]
-                    # ?!?!?!?!?!?!?!?!!?!?!?!??!?!
-                    if msg:
-                        self.msg_handler(player, msg)
-                elif fd == player.redis_fd:
-                    msg = player.channel.parse_response()
-                    if msg[0] == 'message':
-                        uwsgi.websocket_send(msg[2])
+                for fd in ready[0]:
+                    if fd == player.fd:
+                        # ?!?!?!?!?!?!?!?!!?!?!?!??!?!
+                        try:
+                            msg = uwsgi.websocket_recv_nb()
+                        except IOError:
+                            import sys
+                            print sys.exc_info()
+                            player.end()
+                            return [""]
+                        # ?!?!?!?!?!?!?!?!!?!?!?!??!?!
+                        if msg:
+                            self.msg_handler(player, msg)
+                    elif fd == player.redis_fd:
+                        msg = player.channel.parse_response()
+                        if msg[0] == 'message':
+                            uwsgi.websocket_send(msg[2])
 
 
 application = Robotab()

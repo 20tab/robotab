@@ -1,11 +1,40 @@
-<<!DOCTYPE html>
 <html>
 <head>
     <title>Robotab</title>
 </head>
 <body>
-<script src="static/js/three.min.js"></script>
-<script src="static/js/threex.keyboardstate.js"></script>
+<script src="https://rawgithub.com/mrdoob/three.js/master/build/three.js"></script>
+<script src="static/js/OBJLoader.js"></script>
+<script src="static/js/newColladaLoader.js"></script>
+<script src="static/js/THREEx.FullScreen.js"></script>
+<script src="static/js/THREEx.KeyboardState.js"></script>
+
+
+<script id="vertexShader" type="x-shader/x-vertex">
+uniform vec3 viewVector;
+uniform float c;
+uniform float p;
+varying float intensity;
+void main()
+{
+    vec3 vNormal = normalize( normalMatrix * normal );
+    vec3 vNormel = normalize( normalMatrix * viewVector );
+    intensity = pow( c - dot(vNormal, vNormel), p );
+
+    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+}
+</script>
+
+<!-- fragment shader a.k.a. pixel shader -->
+<script id="fragmentShader" type="x-shader/x-vertex">
+uniform vec3 glowColor;
+varying float intensity;
+void main()
+{
+    vec3 glow = glowColor * intensity;
+    gl_FragColor = vec4( glow, 1.0 );
+}
+</script>
 
 <div id="ThreeJS"></div>
 <div id="hud"># waiting for players...</div>
@@ -13,27 +42,119 @@
 <script>
     var ws;
 
+    var hud = document.getElementById("hud");
+
     var ARENA_WIDTH = 800;
     var ARENA_HEIGHT = 600;
 
-    var scene, camera, eagleCamera, backCamera, renderer;
-    var  superlight;
+    var hud_pos = 0;
+
+    var scene, camera, eagleCamera, backCamera, renderer, backgroundScene, backgroundCamera;
+    var superlight;
     var keyboard;
 
     var container;
 
-    var name = location.search.substring(1);
+    var me = location.search.substring(1);
     var players = {};
+    var Robot;
+
+    function ws_recv(e) {
+        // console.log(e.data);
+        var items = e.data.split(':');
+        if (items[0] == 'arena') {
+            // console.log(items[1]);
+            hud.innerHTML = '#' + items[1];
+            return;
+        }
+        if (items[0] == '!') {
+            var player = players[items[1]];
+            if (player == undefined) {
+                return;
+            }
+
+            var cmd = items[2];
+            var args = cmd.split(',');
+            player.bullet.ws['r'] = args[0];
+            player.bullet.ws['x'] = args[1];
+            player.bullet.ws['y'] = args[2];
+            player.bullet.ws['z'] = args[3];
+            player.bullet.ws['R'] = args[4];
+            player.bullet.dirty = true;
+            return;
+        }
+        if(items[0] == 'walls'){
+            var walls = items[1].split(';');
+
+            var manager = new THREE.LoadingManager();
+            manager.onProgress = function ( item, loaded, total ) {
+                // console.log( item, loaded, total );
+            };
+
+            var muro_texture = new THREE.Texture();
+            var muro_loader = new THREE.ImageLoader(manager);
+            muro_loader.load('muro_texture.jpg', function (image) {
+                muro_texture.image = image;
+                muro_texture.needsUpdate = true;
+            });
+
+            var Muro;
+
+            var arena_loader = new THREE.OBJLoader(manager);
+            arena_loader.load('muro.obj', function (object){
+                object.traverse(function (child) {
+                    if (child instanceof THREE.Mesh) {
+                        child.material.map = muro_texture;
+                    }
+                });
+                object.children[0].geometry.computeFaceNormals();
+                var  geometry = object.children[0].geometry;
+                THREE.GeometryUtils.center(geometry);
+
+                Muro = object;
+
+                var i;
+                for (i = 0; i < walls.length; i++){
+                    var args = walls[i].split(',');
+
+                    var muro = Muro.clone();
+                    muro.scale.set(args[0], args[1], args[2])
+                    muro.position.set(args[3], args[4], args[5]);
+                    muro.rotation.y = args[6];
+                    scene.add(muro);
+                }
+            });
+            return;
+        }
+
+        var player = players[items[0]];
+        if (player == undefined) {
+            player_add(items[0]);
+            player = players[items[0]];
+        }
+        var cmd = items[1];
+        var args = cmd.split(',');
+        player.ws['r'] = args[0];
+        player.ws['x'] = args[1];
+        player.ws['y'] = args[2];
+        player.ws['z'] = args[3];
+        player.ws['a'] = args[4];
+        player.energy = parseFloat(args[5]).toFixed(1);
+        player.name_and_energy = items[0] + ': ' + player.energy;
+        player.dirty = true;
+    };
+
 
     function init(){
+        // console.log('init');
         scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera( 45, ARENA_WIDTH / ARENA_HEIGHT, 0.1, 10000 );
+        camera = new THREE.PerspectiveCamera(45, ARENA_WIDTH / ARENA_HEIGHT, 0.1, 10000);
 
         camera.position.x = 0;
         camera.position.y = 800;
         camera.position.z = 0;
 
-        eagleCamera = new THREE.PerspectiveCamera( 45, ARENA_WIDTH / ARENA_HEIGHT, 0.1, 10000 );
+        eagleCamera = new THREE.PerspectiveCamera(45, ARENA_WIDTH / ARENA_HEIGHT, 0.1, 10000);
 
         eagleCamera.lookAt(scene.position);
         eagleCamera.position.x = 0;
@@ -44,36 +165,37 @@
         scene.add(camera);
         scene.add(eagleCamera);
 
-        backCamera = new THREE.PerspectiveCamera( 45, ARENA_WIDTH / ARENA_HEIGHT, 0.1, 10000 );
+        backCamera = new THREE.PerspectiveCamera(45, ARENA_WIDTH / ARENA_HEIGHT, 0.1, 10000);
 
         keyboard = new THREEx.KeyboardState();
 
-        renderer = new THREE.WebGLRenderer( {antialias: true} );
+        renderer = new THREE.WebGLRenderer({antialias: true});
         renderer.setSize(ARENA_WIDTH, ARENA_HEIGHT);
 
-        // renderer.shadowMapEnabled = true;
-        // renderer.shadowCameraNear = 3;
-        // renderer.shadowCameraFar = camera.far;
-        // renderer.shadowCameraFov = 50;
+        renderer.shadowMapEnabled = true;
+        renderer.shadowCameraNear = 3;
+        renderer.shadowCameraFar = camera.far;
+        renderer.shadowCameraFov = 50;
 
-        // renderer.shadowMapBias = 0.0039;
-        // renderer.shadowMapDarkness = 0.5;
-        // renderer.shadowMapWidth = 1024;
-        // renderer.shadowMapHeight = 1024;
+        renderer.shadowMapBias = 0.0039;
+        renderer.shadowMapDarkness = 0.5;
+        renderer.shadowMapWidth = 1024;
+        renderer.shadowMapHeight = 1024;
 
         container = document.getElementById("ThreeJS");
         container.appendChild(renderer.domElement);
 
-        var ambient = new THREE.AmbientLight( 0x333333 );
+        var ambient = new THREE.AmbientLight(0x333333);
         scene.add(ambient);
 
-        var floorTexture = new THREE.ImageUtils.loadTexture( 'static/image/metal17.jpg' );
+        var floorTexture = new THREE.ImageUtils.loadTexture( 'metal17.jpg' );
         floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-        floorTexture.repeat.set(10, 10);
-        var floorMaterial = new THREE.MeshPhongMaterial( {map:floorTexture, side: THREE.DoubleSide} );
-        var floorGeometry = new THREE.PlaneGeometry((4000, 4000);
-        var floor = new THREE.Mesh(floorMaterial, floorGeometry);
-        floor.postion.y = -0.5;
+        floorTexture.repeat.set( 10, 10 );
+        var floorMaterial = new THREE.MeshPhongMaterial( { map: floorTexture , side: THREE.DoubleSide } );
+        var floorGeometry = new THREE.PlaneGeometry(4000, 4000);
+        //var floorGeometry = new THREE.CubeGeometry( 400, 400, 200 );
+        var floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.position.y = -0.5;
         floor.rotation.x = Math.PI / 2;
         floor.receiveShadow = true;
 
@@ -87,143 +209,323 @@
 
         superlight = light;
         light.castShadow = true;
-        // var spherelight_geom = new THREE.SphereGeometry( 20, 16, 16 );
-        // var blueMaterial = new THREE.MeshBasicMaterial( { color: 0x00fff00} );
-        // var spherelight = new THREE.Mesh( spherelight_geom, blueMaterial );
 
-        // scene.add(spherelight);
-        // spherelight.castShadow = true;
-        // spherelight.position.set(-100, 150, 0);
+        var light = new THREE.DirectionalLight(0xffffff, 0.7);
+        light.position.set(0, 10, 0);
+        scene.add(light);
 
-        var light = THREE.DirectionalLight( 0xffffff, 0.7 );
-        light.position.set( 0, 10, 0 );
-        scene.add( light );
+        var loader = new THREE.ColladaLoader();
+        loader.load('prova_joint.dae', function (geometry, materials) {
+            Robot = geometry.scene;
+            Robot.castShadow = true;
 
-        var manager = new THREE.LoadingManager();
-        manager.onProgress = function ( item, loaded, total ) {
-            console.log( item, loaded, total );
-        };
+            // console.log(geometry.skins[0]);
+            Robot.animations = geometry.animations;
+            Robot.skin = geometry.skins[0];
 
-        var muro_texture = new THREE.Texture();
-        var muro_loader = new THREE.ImageLoader(manager);
-        muro_loader.load( 'static/image/muro_texture.jpg', function ( image ) {
-            muro_texture.image = image;
-            muro_texture.needsUpdate = true;
+            // console.log(geometry.animations);
+
+            ws = new WebSocket('ws://127.0.0.1:8080/robotab?' + me);
+            ws.onopen = start_the_world;
+            ws.onmessage = ws_recv;
+            ws.oncolose = function() {
+                alert('connection closed');
+            }
+            ws.onerror = function() {
+                alert('ERROR');
+            }
         });
 
-        var Muro;
+        var Ltexture = THREE.ImageUtils.loadTexture('skydome.jpg');
+        var backgroundMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(2, 2, 0),
+            new THREE.MeshBasicMaterial({map: Ltexture})
+        );
 
-        var arena_loader = new THREE.OBJLoader(manager);
-        arena_loader.load('muro.obj', function (object){
-            object.traverse( function (child) {
-                if (child instanceof THREE.Mesh) {
-                    child.materia.map = muro_texture;
+        backgroundMesh.material.depthTest = false;
+        backgroundMesh.material.depthWrite = false;
+
+        backgroundScene = new THREE.Scene();
+        backgroundCamera = new THREE.Camera();
+        backgroundScene.add(backgroundCamera);
+        backgroundScene.add(backgroundMesh);
+    }
+
+    init();
+
+    function start_the_world() {
+        // console.log('start_the_world');
+        animate();
+    }
+
+    var clock = new THREE.Clock();
+
+    function animate()
+    {
+        setTimeout( function() {
+        requestAnimationFrame( animate );
+        }, 1000 / 30 );
+        render();
+        update();
+    }
+
+    var laser_direction = 2;
+    var use_eagle_camera = 0;
+    var is_pressing = false;
+    var use_back_camera = 0;
+    var is_b_pressing = false;
+
+    var progress = 0.01;
+
+    function render() {
+        // console.log('render');
+
+        renderer.autoClear = false;
+        renderer.clear();
+        renderer.render(backgroundScene, backgroundCamera);
+
+        if (use_eagle_camera) {
+            renderer.render(scene, eagleCamera);
+        }
+        else if (use_back_camera) {
+            renderer.render(scene, backCamera);
+        }
+        else {
+            renderer.render(scene, camera);
+        }
+    }
+
+    function update() {
+        // console.log('update');
+        var rotating = false;
+
+        if (!is_pressing && keyboard.pressed("c")){
+            if (use_eagle_camera == 1) {
+                use_eagle_camera = 0;
+            }
+            else{
+                use_eagle_camera = 1;
+                use_back_camera = 0;
+            }
+            is_pressing = true;
+        }
+        else if (is_pressing && !keyboard.pressed("c")) {
+            is_pressing = false;
+        }
+
+        if (!is_b_pressing && keyboard.pressed("b")) {
+            if (use_back_camera == 1){
+                use_back_camera = 0;
+            }
+            else {
+                use_back_camera = 1;
+                use_eagle_camera = 0;
+            }
+            is_b_pressing = true;
+        }
+        else if (is_b_pressing && !keyboard.pressed("b")){
+            is_b_pressing = false;
+        }
+
+        if (keyboard.pressed("space")) {
+            ws.send(me+":AT");
+        }
+        // else if (players[me] && players[me].ws['a']){
+        //     ws.send(me+":at");
+        // }
+
+        if (keyboard.pressed("right")){
+            ws.send(me + ":rr");
+            rotating = true;
+        }
+        else if (keyboard.pressed("left")){
+            ws.send(me + ":rl");
+            rotating = true;
+        }
+        if (!rotating && keyboard.pressed("up")){
+            ws.send(me + ":fw");
+        }
+        if (!rotating && keyboard.pressed("down")){
+            ws.send(me + ":bw");
+        }
+
+        Object.keys(players).forEach(function(key){
+            var player = players[key];
+            if (player.bullet.dirty == true) {
+                player.bullet.children[0].visible = true;
+                player.bullet.visible = true;
+                player.bullet.rotation.y = player.bullet.ws['r'];
+                player.bullet.position.x = player.bullet.ws['x'];
+                player.bullet.position.y = player.bullet.ws['y'];
+                player.bullet.position.z = player.bullet.ws['z'];
+                if (player.bullet.ws['R'] <= 0) {
+                    player.bullet.visible = false;
+                    player.bullet.children[0].visible = false;
+
                 }
-            });
-            object.children[0].geometry.computeFaceNormals();
-            var  geometry = object.children[0].geometry;
-            THREE.GeometryUtils.center(geometry);
+            }
+            if (!player.dirty) return;
+            if (player.energy <= 0) {
+                scene.remove(player.bullet);
+                scene.remove(player);
+                // removeReferences(player);
+                player.dirty = false;
+                delete players[player.name];
+                console.log(players);
+                use_back_camera = 0;
+                use_eagle_camera = 1;
 
-            Muro = object;
-            Muro.scale.set(50,50,50);
+            }
 
-            var muro = Muro.clone();
-            muro.position.set(-1000, 88, -1600);
-            scene.add(muro);
+            draw_hud_div(player);
+            player.rotation.y = player.ws['r'];
+            player.position.x = player.ws['x'];
+            player.position.y = player.ws['y'];
+            player.position.z = player.ws['z'];
 
-            var muro = Muro.clone();
-            muro.position.set(0, 88, -1600);
-            scene.add(muro);
-
-            var muro = Muro.clone();
-            muro.position.set(1000, 88, -1600);
-            scene.add(muro);
-
-            var muro = Muro.clone();
-            muro.rotation.y = -Math.PI/2;
-            muro.position.set(-1600, 88, -1000);
-            scene.add(muro);
-
-            var muro = Muro.clone();
-            muro.rotation.y = -Math.PI/2;
-            muro.position.set(-1600, 88, 0);
-            scene.add(muro);
-
-            var muro = Muro.clone();
-            muro.rotation.y = -Math.PI/2;
-            muro.position.set(-800, 88, 500);
-            scene.add(muro);
-
-
-            var muro = Muro.clone();
-            muro.rotation.y = -Math.PI/2;
-            muro.position.set(800, 88, -500);
-            scene.add(muro);
-
-            var muro = Muro.clone();
-            muro.rotation.y = -Math.PI/2;
-            muro.position.set(800, 88, 0);
-            scene.add(muro);
-
-            var muro = Muro.clone();
-            muro.rotation.y = -Math.PI/2;
-            muro.position.set(800, 88, 500);
-            scene.add(muro);
-
-            var muro = Muro.clone();
-            muro.position.set(-500, 88, 800);
-            scene.add(muro);
-
-            var muro = Muro.clone();
-            muro.position.set(0, 88, 800);
-            scene.add(muro);
-
-            var muro = Muro.clone();
-            muro.position.set(500, 88, 800);
-            scene.add(muro);
-
+            player.dirty = false;
         });
 
+        if (players[me]){
+            camera.lookAt(players[me].position);
+        }
 
+        superlight.rotation.x += 0.1;
 
+        var delta = clock.getDelta();
+        THREE.AnimationHandler.update(delta);
+    }
+
+    function player_add(name) {
+        // console.log('player_add');
+        players[name] = Robot.clone();
+
+        players[name].castShadow = true;
+        players[name].receiveShadow = true;
+        players[name].children[1].children[0].material.color.setHex(Math.random() * 0xffffff);
+
+        var cingolo = players[name].children[0];
+        players[name].cingolo = cingolo;
+
+        players[name].name = name;
+        players[name].scale.set(5, 5, 5);
+        players[name].energy = 100.0;
+        players[name].name_and_energy = name + ': 100.0';
+
+        var customMaterial = new THREE.ShaderMaterial(
+            {
+                uniforms:
+                    {
+                        "c": {type: "f", value: 1.0},
+                        "p": {type: "f", value: 1.4},
+                        glowColor: {type: "c", value: new THREE.Color(0xff0000)},
+                        viewVector: {type: "v3", value: camera.position}
+                    },
+                vertexShader: document.getElementById('vertexShader').textContent,
+                fragmentShader: document.getElementById('fragmentShader').textContent,
+                side: THREE.FrontSide,
+                blending: THREE.AdditiveBlending,
+                transparent: true
+            }
+        );
+
+        var sphereGeom = new THREE.SphereGeometry(20, 20, 20);
+        var blueMaterial = new THREE.MeshBasicMaterial({color: 0xff00ff});
+        var bullet = new THREE.Mesh(sphereGeom, blueMaterial);
+        bullet.visible = false;
+        scene.add(bullet);
+        bullet.ws = {};
+        players[name].bullet = bullet;
+
+        var spotLight = new THREE.PointLight(0xff00ff, 1.0, 200);
+        players[name].bullet.add(spotLight);
+        scene.add(players[name]);
+
+        players[name].ws = {'x':0.0, 'y':0.0, 'z':0.0, 'r':0.0, 'a':0};
+
+        var player_hud = document.createElement('div');
+        player_hud.id = 'player_' + name;
+        player_hud.setAttribute('style', "position:absolute;left:800px;top:" + hud_pos + "px");
+        hud_pos += 20;
+
+        document.getElementsByTagName('body')[0].appendChild(player_hud);
+        players[name].hud = player_hud;
+
+        draw_hud_div(players[name]);
+
+        if (name == me){
+            players[name].add(backCamera);
+            backCamera.position.set(0, 10, -80);
+            backCamera.lookAt(new THREE.Vector3(0, 0, 0));
+        }
+        THREE.AnimationHandler.add(cingolo.children[0].geometry.animation);
+        var animation = new THREE.Animation(cingolo, cingolo.children[0].geometry.animation.name);
+        // console.log("animation");
+        console.log(players[name]);
+        animation.loop = true;
+        animation.play();
+        players[name].animation = animation;
 
     }
+
+    function draw_huds() {
+        // console.log('draw_huds');
+        Object.keys(players).forEach( function(key) {
+            draw_hud_div(players[key]);
+        });
+    }
+
+    function draw_hud_div(player) {
+        // console.log('draw_hud_div');
+
+        player.hud.innerHTML = player.name_and_energy;
+        return;
+    }
+
+    function draw_hud(player) {
+        // console.log('draw_hud');
+
+        var projector = new THREE.Projector();
+        var pos = player.position.clone();
+
+        pos = projector.projectVector(pos, camera);
+
+        var w = ARENA_WIDTH / 2;
+        var h = ARENA_HEIGHT / 2;
+
+        player.energy_mesh.position.x = (((pos.x + 1) * w)) / 20;
+        player.energy_mesh.position.y = (((( -pos.y + 1) * h))) / 20;
+    }
+
+    function go_fullscreen() {
+        // console.log('go_fullscreen');
+
+        if (!THREEx.FullScreen.activated()) {
+            THREEx.FullScreen.request(document.getElementById('ThreeJS'));
+        }
+    }
+
+    function changeVisibility(object3d, visible) {
+        object3d.visible = visible;
+        for(var i = 0, il = object3d.children.length; i< il; i++){
+            changeVisibility(object3d.children[i], visible);
+        }
+    }
+
+    function removeReferences(object3d){
+      try{
+        object3d.traverse(function(ob){
+          try{
+            ob.geometry.dispose();
+          }catch(e){}
+          try{
+            ob.texture.dispose()
+          }catch(e){}
+        });
+      }catch(e){}
+    }
+
 </script>
+
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
