@@ -3,7 +3,7 @@
     <title>Robotab</title>
 </head>
 <body>
-<script src="https://rawgithub.com/mrdoob/three.js/master/build/three.js"></script>
+<script src="static/js/three.min.js"></script>
 <script src="static/js/OBJLoader.js"></script>
 <script src="static/js/newColladaLoader.js"></script>
 <script src="static/js/THREEx.FullScreen.js"></script>
@@ -52,11 +52,14 @@ void main()
     var scene, camera, eagleCamera, backCamera, renderer, backgroundScene, backgroundCamera;
     var superlight;
     var keyboard;
+    var can_use_keyboard = false;
 
     var container;
-
+    var raycaster;
     var me = location.search.substring(1);
     var players = {};
+    var walls = [];
+    var invisible_walls = [];
     var Robot;
 
     function ws_recv(e) {
@@ -84,7 +87,7 @@ void main()
             return;
         }
         if(items[0] == 'walls'){
-            var walls = items[1].split(';');
+            var wall_list = items[1].split(';');
 
             var manager = new THREE.LoadingManager();
             manager.onProgress = function ( item, loaded, total ) {
@@ -112,16 +115,19 @@ void main()
                 THREE.GeometryUtils.center(geometry);
 
                 Muro = object;
+                Muro.children[0].material.transparent = true;
 
                 var i;
-                for (i = 0; i < walls.length; i++){
-                    var args = walls[i].split(',');
+                for (i = 0; i < wall_list.length; i++){
+                    var args = wall_list[i].split(',');
 
                     var muro = Muro.clone();
+                    muro.children[0].material = Muro.children[0].material.clone();
                     muro.scale.set(args[0], args[1], args[2])
                     muro.position.set(args[3], args[4], args[5]);
                     muro.rotation.y = args[6];
                     scene.add(muro);
+                    walls.push(muro);
                 }
             });
             return;
@@ -129,7 +135,7 @@ void main()
 
         var player = players[items[0]];
         if (player == undefined) {
-            player_add(items[0]);
+            add_player(items[0]);
             player = players[items[0]];
         }
         var cmd = items[1];
@@ -166,8 +172,6 @@ void main()
         scene.add(eagleCamera);
 
         backCamera = new THREE.PerspectiveCamera(45, ARENA_WIDTH / ARENA_HEIGHT, 0.1, 10000);
-
-        keyboard = new THREEx.KeyboardState();
 
         renderer = new THREE.WebGLRenderer({antialias: true});
         renderer.setSize(ARENA_WIDTH, ARENA_HEIGHT);
@@ -218,6 +222,7 @@ void main()
         loader.load('prova_joint.dae', function (geometry, materials) {
             Robot = geometry.scene;
             Robot.castShadow = true;
+            Robot.receiveShadow = true;
 
             // console.log(geometry.skins[0]);
             Robot.animations = geometry.animations;
@@ -249,6 +254,7 @@ void main()
         backgroundCamera = new THREE.Camera();
         backgroundScene.add(backgroundCamera);
         backgroundScene.add(backgroundMesh);
+        keyboard = new THREEx.KeyboardState();
     }
 
     init();
@@ -269,13 +275,11 @@ void main()
         update();
     }
 
-    var laser_direction = 2;
-    var use_eagle_camera = 0;
+    var use_eagle_camera = false;
     var is_pressing = false;
-    var use_back_camera = 0;
-    var is_b_pressing = false;
-
-    var progress = 0.01;
+    var camera_changed = false;
+    // var use_back_camera = 0;
+    // var is_b_pressing = false;
 
     function render() {
         // console.log('render');
@@ -287,66 +291,84 @@ void main()
         if (use_eagle_camera) {
             renderer.render(scene, eagleCamera);
         }
-        else if (use_back_camera) {
+        else {
             renderer.render(scene, backCamera);
         }
-        else {
-            renderer.render(scene, camera);
-        }
+
+        // if (use_eagle_camera) {
+        //     renderer.render(scene, eagleCamera);
+        // }
+        // else if (use_back_camera) {
+        //     renderer.render(scene, backCamera);
+        // }
+        // else {
+        //     renderer.render(scene, camera);
+        // }
     }
 
     function update() {
         // console.log('update');
         var rotating = false;
-
-        if (!is_pressing && keyboard.pressed("c")){
-            if (use_eagle_camera == 1) {
-                use_eagle_camera = 0;
+        if (can_use_keyboard){
+            if (!is_pressing && keyboard.pressed("c")){
+                // if (use_eagle_camera == 1) {
+                //     use_eagle_camera = 0;
+                // }
+                // else{
+                //     use_eagle_camera = 1;
+                //     use_back_camera = 0;
+                // }
+                if (!use_eagle_camera){
+                    for (var i = 0; i < invisible_walls.length; i++){
+                        invisible_walls[i].object.material.opacity = 1;
+                    }
+                    invisible_walls = [];
+                }
+                else {
+                    camera_changed = true;
+                }
+                use_eagle_camera = !use_eagle_camera;
+                is_pressing = true;
             }
-            else{
-                use_eagle_camera = 1;
-                use_back_camera = 0;
+            else if (is_pressing && !keyboard.pressed("c")) {
+                is_pressing = false;
             }
-            is_pressing = true;
-        }
-        else if (is_pressing && !keyboard.pressed("c")) {
-            is_pressing = false;
-        }
 
-        if (!is_b_pressing && keyboard.pressed("b")) {
-            if (use_back_camera == 1){
-                use_back_camera = 0;
+            // if (!is_b_pressing && keyboard.pressed("b")) {
+            //     if (use_back_camera == 1){
+            //         use_back_camera = 0;
+            //     }
+            //     else {
+            //         use_back_camera = 1;
+            //         use_eagle_camera = 0;
+            //     }
+            //     is_b_pressing = true;
+            // }
+            // else if (is_b_pressing && !keyboard.pressed("b")){
+            //     is_b_pressing = false;
+            // }
+
+            if (keyboard.pressed("space")) {
+                ws.send(me+":AT");
             }
-            else {
-                use_back_camera = 1;
-                use_eagle_camera = 0;
+            // else if (players[me] && players[me].ws['a']){
+            //     ws.send(me+":at");
+            // }
+
+            if (keyboard.pressed("right")){
+                ws.send(me + ":rr");
+                rotating = true;
             }
-            is_b_pressing = true;
-        }
-        else if (is_b_pressing && !keyboard.pressed("b")){
-            is_b_pressing = false;
-        }
-
-        if (keyboard.pressed("space")) {
-            ws.send(me+":AT");
-        }
-        // else if (players[me] && players[me].ws['a']){
-        //     ws.send(me+":at");
-        // }
-
-        if (keyboard.pressed("right")){
-            ws.send(me + ":rr");
-            rotating = true;
-        }
-        else if (keyboard.pressed("left")){
-            ws.send(me + ":rl");
-            rotating = true;
-        }
-        if (!rotating && keyboard.pressed("up")){
-            ws.send(me + ":fw");
-        }
-        if (!rotating && keyboard.pressed("down")){
-            ws.send(me + ":bw");
+            else if (keyboard.pressed("left")){
+                ws.send(me + ":rl");
+                rotating = true;
+            }
+            if (!rotating && keyboard.pressed("up")){
+                ws.send(me + ":fw");
+            }
+            if (!rotating && keyboard.pressed("down")){
+                ws.send(me + ":bw");
+            }
         }
 
         Object.keys(players).forEach(function(key){
@@ -364,25 +386,47 @@ void main()
 
                 }
             }
-            if (!player.dirty) return;
-            if (player.energy <= 0) {
-                scene.remove(player.bullet);
-                scene.remove(player);
-                // removeReferences(player);
-                player.dirty = false;
-                delete players[player.name];
-                console.log(players);
-                use_back_camera = 0;
-                use_eagle_camera = 1;
 
+            if (player.dirty) {
+                if (player.energy <= 0) {
+                    remove_player(player);
+                }
+
+                draw_hud_div(player);
+                player.rotation.y = parseFloat(player.ws['r']);
+                player.position.x = parseFloat(player.ws['x']);
+                player.position.y = parseFloat(player.ws['y']);
+                player.position.z = parseFloat(player.ws['z']);
             }
 
-            draw_hud_div(player);
-            player.rotation.y = player.ws['r'];
-            player.position.x = player.ws['x'];
-            player.position.y = player.ws['y'];
-            player.position.z = player.ws['z'];
+            if ((player.dirty && player.name == me && !use_eagle_camera) || camera_changed){
+                player.updateMatrixWorld();
+                var position_vector = new THREE.Vector3();
+                var position = position_vector.setFromMatrixPosition(backCamera.matrixWorld);
 
+                var direction = player.position.clone().sub(position).normalize();
+
+                raycaster.set(position, direction);
+
+                var obstacles = raycaster.intersectObjects(walls, true);
+
+                var i;
+                for (i = 0; i < invisible_walls.length; i++){
+                    var j = obstacles.indexOf(invisible_walls[i]);
+                    if (j >= 0){
+                        obstacles.splice(j, 1);
+                    }
+                    else {
+                        invisible_walls[i].object.material.opacity = 1;
+                        invisible_walls.splice(i, 1);
+                    }
+                }
+                for (i = 0; i < obstacles.length; i++){
+                    obstacles[i].object.material.opacity = 0.6;
+                    invisible_walls.push(obstacles[i]);
+                }
+                camera_changed = false;
+            }
             player.dirty = false;
         });
 
@@ -396,12 +440,12 @@ void main()
         THREE.AnimationHandler.update(delta);
     }
 
-    function player_add(name) {
-        // console.log('player_add');
+    function add_player(name) {
+        // console.log('add_player');
         players[name] = Robot.clone();
 
-        players[name].castShadow = true;
-        players[name].receiveShadow = true;
+        // players[name].castShadow = true;
+        // players[name].receiveShadow = true;
         players[name].children[1].children[0].material.color.setHex(Math.random() * 0xffffff);
 
         var cingolo = players[name].children[0];
@@ -454,18 +498,41 @@ void main()
         draw_hud_div(players[name]);
 
         if (name == me){
+            can_use_keyboard = true;
             players[name].add(backCamera);
             backCamera.position.set(0, 10, -80);
-            backCamera.lookAt(new THREE.Vector3(0, 0, 0));
+            backCamera.lookAt(players[name].position);
+            // players[name].updateMatrixWorld();
+            players[name].updateMatrixWorld();
+            var position_vector = new THREE.Vector3();
+            var position = position_vector.setFromMatrixPosition(backCamera.matrixWorld);
+
+            var direction = players[name].position.clone().sub(position).normalize();
+
+            raycaster = new THREE.Raycaster(position, direction, 0, 350);
         }
+
         THREE.AnimationHandler.add(cingolo.children[0].geometry.animation);
         var animation = new THREE.Animation(cingolo, cingolo.children[0].geometry.animation.name);
         // console.log("animation");
-        console.log(players[name]);
         animation.loop = true;
         animation.play();
         players[name].animation = animation;
 
+    }
+
+    function remove_player(player){
+        scene.remove(player.bullet);
+        scene.remove(player);
+        // removeReferences(player);
+        player.dirty = false;
+        delete players[player.name];
+        console.log(players);
+        if (player.name == me) {
+            // use_back_camera = 0;
+            use_eagle_camera = true;
+            can_use_keyboard = false;
+        }
     }
 
     function draw_huds() {

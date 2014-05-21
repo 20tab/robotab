@@ -40,7 +40,7 @@ class Robot(object):
 
 class Arena(object):
 
-    def __init__(self, max_players=8, warmup=30):
+    def __init__(self, max_players=8, warmup=0):
         self.greenlets = {
             #'engine': self.engine_start,
             'start': self.start
@@ -96,7 +96,7 @@ class Arena(object):
         self.channel.subscribe(self.arena)
 
         self.bonus_malus_queue = ['haste', 'giant', 'heal', 'power']
-        self.spawn_iterator = self.spawn_points.__iter__()
+        self.spawn_iterator = iter(self.spawn_points)
 
     def broadcast(self, msg):
         self.redis.publish(self.arena, 'arena:{}'.format(msg))
@@ -188,8 +188,8 @@ class Arena(object):
         while True:
             if len(self.players) == 0:
                 break
-            if len(self.game.players) == 1:
-                self.game.winning_logic()
+            if len(self.players) == 0:
+                self.winning_logic()
                 break
             t = uwsgi.micros() / 1000.0
             for p in self.players.keys():
@@ -219,16 +219,16 @@ class Arena(object):
         del self.greenlets['start']
         #self.warming_up = True
         warmup = self.warmup
+        for p in self.players.keys():
+            self.players[p].update_gfx()
         while warmup > 0:
             gevent.sleep(1.0)
             self.broadcast("warmup,{} seconds to start".format(warmup))
             warmup -= 1
-            print(warmup)
         #self.warmup = False
-
+        self.started = True
         gevent.spawn(self.engine_start)
         #gevent.sleep()
-        self.started = True
         self.broadcast("FIGHT!!!")
         gevent.sleep()
         # this queue is initialized on game startup
@@ -242,22 +242,26 @@ class Arena(object):
             self.broadcast("bm,{}".format(choice(self.bonus_malus_queue)))
         gevent.sleep(1.0)
         self.broadcast("end")
-        self.finished = False
         self.started = False
         self.greenlets['start'] = self.start
         gevent.sleep()
 
+    def spawn_greenlets(self):
+        for greenlet in self.greenlets:
+            if len(self.players) >= 1:
+                gevent.spawn(self.greenlets[greenlet])
 
-def wait_for_game():
-    while True:
-        gevent.sleep(1)
-
-
-# place up to 8 waiting_players
-# in the player list and start the game again
-# unless less than 2 players are available
-def winning_logic():
-    pass
+    # place up to 8 waiting_players
+    # in the player list and start the game again
+    # unless less than 2 players are available
+    def winning_logic(self):
+        self.finished = False
+        self.players = {}
+        if len(self.waiting_players) > 0:
+            for player in self.waiting_players:
+                self.players[player.name] = player
+                if len(self.players) >= self.max_players:
+                    break
 
 
 class Player(object):
@@ -312,13 +316,17 @@ class Player(object):
         )
         self.send_all(msg)
 
+    def wait_for_game(self):
+        while self.game.started or self.game.finished or self.name not in self.game.players:
+            gevent.sleep(1)
+
 
 class Bullet(object):
 
     def __init__(self, game, player, _range=1000.0):
         self.game = game
-        self.robot = Robot(0.0, 0.0, 0.0)
         self.player = player
+        self.robot = Robot(self.player.robot.x, self.player.robot.y, 0.0)
         self.is_shooting = 0
         self._range = _range
 
@@ -382,25 +390,23 @@ class Robotab(Arena):
         if e['PATH_INFO'] == '/robotab':
             uwsgi.websocket_handshake()
             uwsgi.websocket_send('walls:{}'.format(str(self.walls).replace('),', ';').translate(None, "()")))
+
             try:
                 robot_coordinates = self.spawn_iterator.next()
             except StopIteration:
-                self.spawn_iterator = self.spawn_points.__iter__()
+                self.spawn_iterator = iter(self.spawn_points)
                 robot_coordinates = self.spawn_iterator.next()
+
             player = Player(self, e['QUERY_STRING'], uwsgi.connection_fd(), *robot_coordinates)
 
-            for greenlet in self.greenlets:
-                if len(self.players) >= 1:
-                    gevent.spawn(self.greenlets[greenlet])
-
-            if self.started or len(self.players > 8):
+            if self.started or len(self.players) > 8 or len(self.waiting_players) > 0:
+                print("hey {}, game already started or is full, wait for next one...".format(player.name))
                 self.waiting_players.append(player)
-                print("hey {}, game already started or is full, waiting for next one...".format(player.name))
-                wait_for_game()
+                player.wait_for_game()
             else:
                 self.players[player.name] = player
-            for p in self.players.keys():
-                self.players[p].update_gfx()
+
+            self.spawn_greenlets()
 
             while True:
                 ready = gevent.select.select([player.fd, player.redis_fd], [], [], timeout=4.0)
