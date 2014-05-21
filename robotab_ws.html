@@ -1,6 +1,7 @@
 <html>
 <head>
     <title>Robotab</title>
+    <link href="static/css/base.css" rel="stylesheet" />
 </head>
 <body>
 <script src="static/js/three.min.js"></script>
@@ -35,9 +36,14 @@ void main()
     gl_FragColor = vec4( glow, 1.0 );
 }
 </script>
-
-<div id="ThreeJS"></div>
+    <div id="ThreeJS">
+    <div id="game_over" style="display:block;">
+        <div id="username_div">USERNAME<br><input type="text" name="username_input" id="username_input" onclick="getUsername();"></div>
+        <h3 id="play_again" style="display: block;">PLAY</h3>
+    </div>
+    </div>
 <div id="hud"># waiting for players...</div>
+
 
 <script>
     var ws;
@@ -134,12 +140,12 @@ void main()
         }
 
         var player = players[items[0]];
-        if (player == undefined) {
-            add_player(items[0]);
-            player = players[items[0]];
-        }
         var cmd = items[1];
         var args = cmd.split(',');
+        if (player == undefined) {
+            add_player(items[0], args[1], args[2], args[3], args[0]);
+            player = players[items[0]];
+        }
         player.ws['r'] = args[0];
         player.ws['x'] = args[1];
         player.ws['y'] = args[2];
@@ -223,12 +229,8 @@ void main()
             Robot = geometry.scene;
             Robot.castShadow = true;
             Robot.receiveShadow = true;
-
-            // console.log(geometry.skins[0]);
             Robot.animations = geometry.animations;
             Robot.skin = geometry.skins[0];
-
-            // console.log(geometry.animations);
 
             ws = new WebSocket('ws://127.0.0.1:8080/robotab?' + me);
             ws.onopen = start_the_world;
@@ -275,11 +277,9 @@ void main()
         update();
     }
 
-    var use_eagle_camera = false;
+    var use_eagle_camera = true;
     var is_pressing = false;
     var camera_changed = false;
-    // var use_back_camera = 0;
-    // var is_b_pressing = false;
 
     function render() {
         // console.log('render');
@@ -288,21 +288,11 @@ void main()
         renderer.clear();
         renderer.render(backgroundScene, backgroundCamera);
 
-        if (use_eagle_camera) {
-            renderer.render(scene, eagleCamera);
-        }
-        else {
-            renderer.render(scene, backCamera);
-        }
-
         // if (use_eagle_camera) {
         //     renderer.render(scene, eagleCamera);
         // }
-        // else if (use_back_camera) {
-        //     renderer.render(scene, backCamera);
-        // }
         // else {
-        //     renderer.render(scene, camera);
+        //     renderer.render(scene, backCamera);
         // }
     }
 
@@ -311,13 +301,7 @@ void main()
         var rotating = false;
         if (can_use_keyboard){
             if (!is_pressing && keyboard.pressed("c")){
-                // if (use_eagle_camera == 1) {
-                //     use_eagle_camera = 0;
-                // }
-                // else{
-                //     use_eagle_camera = 1;
-                //     use_back_camera = 0;
-                // }
+
                 if (!use_eagle_camera){
                     for (var i = 0; i < invisible_walls.length; i++){
                         invisible_walls[i].object.material.opacity = 1;
@@ -333,20 +317,6 @@ void main()
             else if (is_pressing && !keyboard.pressed("c")) {
                 is_pressing = false;
             }
-
-            // if (!is_b_pressing && keyboard.pressed("b")) {
-            //     if (use_back_camera == 1){
-            //         use_back_camera = 0;
-            //     }
-            //     else {
-            //         use_back_camera = 1;
-            //         use_eagle_camera = 0;
-            //     }
-            //     is_b_pressing = true;
-            // }
-            // else if (is_b_pressing && !keyboard.pressed("b")){
-            //     is_b_pressing = false;
-            // }
 
             if (keyboard.pressed("space")) {
                 ws.send(me+":AT");
@@ -440,7 +410,7 @@ void main()
         THREE.AnimationHandler.update(delta);
     }
 
-    function add_player(name) {
+    function add_player(name, x, y, z, r) {
         // console.log('add_player');
         players[name] = Robot.clone();
 
@@ -483,7 +453,6 @@ void main()
 
         var spotLight = new THREE.PointLight(0xff00ff, 1.0, 200);
         players[name].bullet.add(spotLight);
-        scene.add(players[name]);
 
         players[name].ws = {'x':0.0, 'y':0.0, 'z':0.0, 'r':0.0, 'a':0};
 
@@ -511,7 +480,11 @@ void main()
 
             raycaster = new THREE.Raycaster(position, direction, 0, 350);
         }
-
+        players[name].position.x = parseFloat(x);
+        players[name].position.y = parseFloat(y);
+        players[name].position.z = parseFloat(z);
+        players[name].rotation.y = parseFloat(r);
+        scene.add(players[name]);
         THREE.AnimationHandler.add(cingolo.children[0].geometry.animation);
         var animation = new THREE.Animation(cingolo, cingolo.children[0].geometry.animation.name);
         // console.log("animation");
@@ -592,6 +565,9 @@ void main()
       }catch(e){}
     }
 
+    function getUsername(){
+        console.log(document.getElementById('username_input').value);
+    }
 </script>
 
 </body>

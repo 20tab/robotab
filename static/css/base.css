@@ -15,3 +15,43 @@ body {
     z-index:1000;
     color:white;
 }
+
+#username_div {
+    color: white;
+    margin-top: 35px;
+}
+
+#username_input {
+    width: 100px;
+    height: 30px;
+    background-color:transparent;
+    color:white;
+    text-align: center;
+    /*opacity: 0.4;*/
+}
+
+#play_again{
+    color: white;
+    display: none;
+}
+
+#play_again:hover{
+    color: red;
+    cursor: pointer;
+}
+
+#game_over{
+    background-color: black;
+    position: absolute;
+    top:300px; left: 0;
+    padding:0;
+    width: 800px;
+    height: 150px;
+    text-align: center;
+    line-height: 150px;
+    font: 40px Impact;
+    font-weight: bold;
+    opacity: 0.7;
+    z-index: 99999;
+    display:none;
+}

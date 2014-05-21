@@ -40,7 +40,7 @@ class Robot(object):
 
 class Arena(object):
 
-    def __init__(self, max_players=8, warmup=0):
+    def __init__(self, max_players=8, warmup=10):
         self.greenlets = {
             #'engine': self.engine_start,
             'start': self.start
@@ -76,18 +76,18 @@ class Arena(object):
 
         self.spawn_points = (
             #    x,     y,               r
-            #(    0,  1775,         math.pi),
-            #(    0, -1775,               0),
-            (-1775,  1775, 3 * math.pi / 4),
-            #(-1775,     0,     math.pi / 2),
-            #( 1775,     0, 3 * math.pi / 2),
-            ( 1775,  1775, 5 * math.pi / 4),
-            ( 1775, -1775, 7 * math.pi / 4),
-            (-1775, -1775,     math.pi / 4),
-            (-1100,  1100, 3 * math.pi / 4),
-            ( 1100,  1100, 5 * math.pi / 4),
-            ( 1100, -1100, 7 * math.pi / 4),
-            (-1100, -1100,     math.pi / 4),
+            #(    0,  1650,         math.pi),
+            #(    0, -1650,               0),
+            ( -935,   935, 3 * math.pi / 4),
+            (  935,   935, 5 * math.pi / 4),
+            (  935,  -935, 7 * math.pi / 4),
+            ( -935,  -935,     math.pi / 4),
+            (-1650,  1650, 3 * math.pi / 4),
+            #(-1650,     0,     math.pi / 2),
+            #( 1650,     0, 3 * math.pi / 2),
+            ( 1650,  1650, 5 * math.pi / 4),
+            ( 1650, -1650, 7 * math.pi / 4),
+            (-1650, -1650,     math.pi / 4),
         )
 
         self.arena = "arena{}".format(uwsgi.worker_id())
@@ -248,7 +248,7 @@ class Arena(object):
 
     def spawn_greenlets(self):
         for greenlet in self.greenlets:
-            if len(self.players) >= 1:
+            if len(self.players) >= 5:
                 gevent.spawn(self.greenlets[greenlet])
 
     # place up to 8 waiting_players
@@ -399,7 +399,7 @@ class Robotab(Arena):
 
             player = Player(self, e['QUERY_STRING'], uwsgi.connection_fd(), *robot_coordinates)
 
-            if self.started or len(self.players) > 8 or len(self.waiting_players) > 0:
+            if self.started or len(self.players) > self.max_players or len(self.waiting_players) > 0:
                 print("hey {}, game already started or is full, wait for next one...".format(player.name))
                 self.waiting_players.append(player)
                 player.wait_for_game()
