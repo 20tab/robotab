@@ -17,6 +17,7 @@ var me, avatar;
 var players = {};
 var walls = [];
 var invisible_walls = [];
+var posters = [];
 
 var objects = [
     {texture: 'ROBO_01_TEXTURE.jpg', object: 'ROBO_01_OK.obj', ref: null},
@@ -74,6 +75,11 @@ function ws_recv(e) {
             add_wall(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
         }
         return;
+    }
+
+    if (items[0] == 'posters') {
+        posters = items[1].split(';');
+        console.log(posters);
     }
 
     var player = players[items[0]];
