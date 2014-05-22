@@ -21,6 +21,7 @@ var invisible_walls = [];
 var objects = [
     {texture: 'ROBO_01_TEXTURE.jpg', object: 'ROBO_01_OK.obj', ref: null},
     {texture: 'ROBO_02_TEXTURE.jpg', object: 'ROBO_02_OK.obj', ref: null},
+    {texture: 'missile_texture.jpg', object: 'missile.obj', ref: null},
     {texture: 'muro_texture.jpg'   , object: 'muro.obj'      , ref: null},
 ];
 
@@ -115,7 +116,7 @@ function init(){
 
     renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.setSize(ARENA_WIDTH, ARENA_HEIGHT);
-    renderer.shadowMapEnabled = true;
+    //renderer.shadowMapEnabled = true;
 
     container = document.getElementById("ThreeJS");
     container.appendChild(renderer.domElement);
@@ -131,17 +132,17 @@ function init(){
     var floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.position.y = -0.5;
     floor.rotation.x = Math.PI / 2;
-    floor.receiveShadow = true;
+    //floor.receiveShadow = true;
     scene.add(floor);
 
 
 	var spotlight = new THREE.SpotLight(0xffffff);
 	spotlight.position.set(-2000, 450, -2000);
 	//spotlight.shadowCameraVisible = true;
-	spotlight.shadowDarkness = 0.95;
+	//spotlight.shadowDarkness = 0.95;
 	spotlight.intensity = 3;
 	// must enable shadow casting ability for the light
-	spotlight.castShadow = true;
+	//spotlight.castShadow = true;
 	scene.add(spotlight);
 
 	var spotlight = new THREE.SpotLight(0xffffff);
@@ -150,7 +151,7 @@ function init(){
         spotlight.shadowDarkness = 0.95;
         spotlight.intensity = 3;
         // must enable shadow casting ability for the light
-        spotlight.castShadow = true;
+        //spotlight.castShadow = true;
         scene.add(spotlight);
 
 	var spotlight = new THREE.SpotLight(0xffffff);
@@ -159,7 +160,7 @@ function init(){
         spotlight.shadowDarkness = 0.95;
         spotlight.intensity = 3;
         // must enable shadow casting ability for the light
-        spotlight.castShadow = true;
+        //spotlight.castShadow = true;
         scene.add(spotlight);
 
 	var spotlight = new THREE.SpotLight(0xffffff);
@@ -168,7 +169,7 @@ function init(){
         spotlight.shadowDarkness = 0.95;
         spotlight.intensity = 3;
         // must enable shadow casting ability for the light
-        spotlight.castShadow = true;
+        //spotlight.castShadow = true;
         scene.add(spotlight);
 
 
@@ -211,7 +212,7 @@ function animate()
     update();
 }
 
-var use_eagle_camera = true;
+var use_eagle_camera = false;
 var is_pressing = false;
 var camera_changed = false;
 
@@ -258,9 +259,11 @@ function update() {
 		document.getElementById('fire').currentTime = 0;
 		document.getElementById('fire').play();
         }
-        // else if (players[me] && players[me].ws['a']){
-        //     ws.send(me+":at");
-        // }
+/*
+         else if (players[me] && players[me].ws['a']){
+             ws.send(me+":at");
+         }
+*/
 
 	var is_moving = false;
 
@@ -302,15 +305,13 @@ function update() {
     Object.keys(players).forEach(function(key){
         var player = players[key];
         if (player.bullet.dirty == true) {
-            //player.bullet.children[0].visible = true;
-            //player.bullet.visible = true;
+            player.bullet.visible = true;
             player.bullet.rotation.y = player.bullet.ws['r'];
             player.bullet.position.x = player.bullet.ws['x'];
             player.bullet.position.y = player.bullet.ws['y'];
             player.bullet.position.z = player.bullet.ws['z'];
             if (player.bullet.ws['R'] <= 0) {
-                //player.bullet.visible = false;
-                //player.bullet.children[0].visible = false;
+                player.bullet.visible = false;
             }
         }
 
@@ -373,12 +374,11 @@ function add_player(name, avatar, x, y, z, r, scale) {
     players[name].scale.set(scale, scale, scale);
     players[name].energy = 100.0;
     players[name].name_and_energy = name + ': 100.0';
-    players[name].castShadow = true;
-    players[name].receiveShadow = true;
+    //players[name].castShadow = true;
+    //players[name].receiveShadow = true;
 
-    var sphereGeom = new THREE.SphereGeometry(20, 20, 20);
-    var blueMaterial = new THREE.MeshBasicMaterial({color: 0xff00ff});
-    var bullet = new THREE.Mesh(sphereGeom, blueMaterial);
+    var bullet =  objects[2].ref.clone();
+    bullet.scale.set(scale, scale, scale);
     bullet.visible = false;
     scene.add(bullet);
     bullet.ws = {};
@@ -431,13 +431,13 @@ function remove_player(player){
 }
 
 function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
-    var muro = objects[2].ref.clone();
+    var muro = objects[3].ref.clone();
     muro.children[0].material = muro.children[0].material.clone();
     muro.scale.set(sc_x, sc_y, sc_z)
     muro.position.set(x, y, z);
     muro.rotation.y = r;
-    muro.receiveShadow = true;
-    muro.castShadow = true;
+    //muro.receiveShadow = true;
+    //muro.castShadow = true;
     scene.add(muro);
     walls.push(muro);
 }
@@ -464,7 +464,7 @@ function go_fullscreen() {
 
 function loadObjects3d(objects3d, index, manager){
     if (index >= objects3d.length){
-        objects[2].ref.children[0].material.transparent = true;
+        objects[3].ref.children[0].material.transparent = true;
         start_websocket();
         return;
     }
