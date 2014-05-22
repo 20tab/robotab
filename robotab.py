@@ -402,8 +402,8 @@ class Robotab(Arena):
                 self.spawn_iterator = iter(self.spawn_points)
                 robot_coordinates = self.spawn_iterator.next()
 
-            uwsgi.websocket_send('walls:{}'.format(str(self.walls).replace('),', ';').translate(None, "()")))
             uwsgi.websocket_send('posters:{}'.format(';'.join(self.posters)))
+            uwsgi.websocket_send('walls:{}'.format(str(self.walls).replace('),', ';').translate(None, "()")))
             player = Player(self, username, avatar, uwsgi.connection_fd(), *robot_coordinates)
 
             if self.started or len(self.players) > self.max_players or len(self.waiting_players) > 0:
