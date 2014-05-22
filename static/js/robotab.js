@@ -147,7 +147,7 @@ function init(){
 	spotlight.position.set(-2000, 450, -2000);
 	//spotlight.shadowCameraVisible = true;
 	//spotlight.shadowDarkness = 0.95;
-	spotlight.intensity = 3;
+	spotlight.intensity = 2;
 	// must enable shadow casting ability for the light
 	//spotlight.castShadow = true;
 	scene.add(spotlight);
@@ -155,8 +155,8 @@ function init(){
 	var spotlight = new THREE.SpotLight(0xffffff);
         spotlight.position.set(2000, 450, 2000);
         //spotlight.shadowCameraVisible = true;
-        spotlight.shadowDarkness = 0.95;
-        spotlight.intensity = 3;
+        //spotlight.shadowDarkness = 0.95;
+        spotlight.intensity = 2;
         // must enable shadow casting ability for the light
         //spotlight.castShadow = true;
         scene.add(spotlight);
@@ -164,8 +164,8 @@ function init(){
 	var spotlight = new THREE.SpotLight(0xffffff);
         spotlight.position.set(2000, 450, -2000);
         //spotlight.shadowCameraVisible = true;
-        spotlight.shadowDarkness = 0.95;
-        spotlight.intensity = 3;
+        //spotlight.shadowDarkness = 0.95;
+        spotlight.intensity = 2;
         // must enable shadow casting ability for the light
         //spotlight.castShadow = true;
         scene.add(spotlight);
@@ -173,8 +173,8 @@ function init(){
 	var spotlight = new THREE.SpotLight(0xffffff);
         spotlight.position.set(-2000, 450, 2000);
         //spotlight.shadowCameraVisible = true;
-        spotlight.shadowDarkness = 0.95;
-        spotlight.intensity = 3;
+        //spotlight.shadowDarkness = 0.95;
+        spotlight.intensity = 2;
         // must enable shadow casting ability for the light
         //spotlight.castShadow = true;
         scene.add(spotlight);
@@ -448,7 +448,9 @@ function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
     //floorTexture.repeat.set( 10, 10 );
 
     if (posters.length > 0) {
-        var posterTexture = new THREE.ImageUtils.loadTexture( posters[Math.floor(Math.random()*posters.length)]);
+        var texture_name = posters[Math.floor(Math.random()*posters.length)];
+        console.log(texture_name);
+        var posterTexture = new THREE.ImageUtils.loadTexture( texture_name );
         posterTexture.needsUpdate = true;
         var posterMaterial = new THREE.MeshBasicMaterial( { map: posterTexture, side: THREE.DoubleSide} );
         //var posterMaterial = new THREE.MeshPhongMaterial( { color: 0xff0000, side: THREE.DoubleSide } );
@@ -456,10 +458,11 @@ function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
         var poster = new THREE.Mesh(posterGeometry, posterMaterial);
         poster.position.set(parseInt(x), parseInt(y), parseInt(z));
         poster.rotation.y = r;
-        poster.position.x += 22;
+        poster.position.x -= 23;
         poster.position.y += 50;
         console.log(poster);
         scene.add(poster);
+
     }
     //muro.receiveShadow = true;
     //muro.castShadow = true;
