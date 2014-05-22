@@ -47,7 +47,7 @@ class ArenaObject(object):
 
 class Arena(object):
 
-    def __init__(self, min_players=3, max_players=8, warmup=1):
+    def __init__(self, min_players=1, max_players=8, warmup=1):
         self.greenlets = {
             #'engine': self.engine_start,
             'start': self.start
