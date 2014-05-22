@@ -47,6 +47,7 @@ class Arena(object):
             'start': self.start
         }
 
+        self.posters = ['posters/robbo.jpg', 'posters/raffo.jpg']
         self.animations = []
         self.players = {}
         self.waiting_players = []
