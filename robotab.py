@@ -46,6 +46,7 @@ class Arena(object):
             'start': self.start
         }
 
+        self.posters = ['posters/robbo.jpg', 'posters/raffo.jpg', 'posters/unbit.jpg', 'posters/20tab.jpg', 'posters/beri.jpg', 'posters/pycon.jpg']
         self.animations = []
         self.players = {}
         self.waiting_players = []
@@ -404,6 +405,7 @@ class Robotab(Arena):
                 self.spawn_iterator = iter(self.spawn_points)
                 robot_coordinates = self.spawn_iterator.next()
 
+            uwsgi.websocket_send('posters:{}'.format(';'.join(self.posters)))
             uwsgi.websocket_send('walls:{}'.format(str(self.walls).replace('),', ';').translate(None, "()")))
             player = Player(self, username, avatar, uwsgi.connection_fd(), *robot_coordinates)
 

@@ -17,6 +17,7 @@ var me, avatar;
 var players = {};
 var walls = [];
 var invisible_walls = [];
+var posters = [];
 
 var objects = [
     {texture: 'ROBO_01_TEXTURE.jpg', object: 'ROBO_01_OK.obj', ref: null},
@@ -73,6 +74,12 @@ function ws_recv(e) {
             var args = wall_list[i].split(',');
             add_wall(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
         }
+        return;
+    }
+
+    if (items[0] == 'posters') {
+        posters = items[1].split(';');
+        console.log(posters);
         return;
     }
 
@@ -140,7 +147,7 @@ function init(){
 	spotlight.position.set(-2000, 450, -2000);
 	//spotlight.shadowCameraVisible = true;
 	//spotlight.shadowDarkness = 0.95;
-	spotlight.intensity = 3;
+	spotlight.intensity = 2;
 	// must enable shadow casting ability for the light
 	//spotlight.castShadow = true;
 	scene.add(spotlight);
@@ -148,8 +155,8 @@ function init(){
 	var spotlight = new THREE.SpotLight(0xffffff);
         spotlight.position.set(2000, 450, 2000);
         //spotlight.shadowCameraVisible = true;
-        spotlight.shadowDarkness = 0.95;
-        spotlight.intensity = 3;
+        //spotlight.shadowDarkness = 0.95;
+        spotlight.intensity = 2;
         // must enable shadow casting ability for the light
         //spotlight.castShadow = true;
         scene.add(spotlight);
@@ -157,8 +164,8 @@ function init(){
 	var spotlight = new THREE.SpotLight(0xffffff);
         spotlight.position.set(2000, 450, -2000);
         //spotlight.shadowCameraVisible = true;
-        spotlight.shadowDarkness = 0.95;
-        spotlight.intensity = 3;
+        //spotlight.shadowDarkness = 0.95;
+        spotlight.intensity = 2;
         // must enable shadow casting ability for the light
         //spotlight.castShadow = true;
         scene.add(spotlight);
@@ -166,14 +173,14 @@ function init(){
 	var spotlight = new THREE.SpotLight(0xffffff);
         spotlight.position.set(-2000, 450, 2000);
         //spotlight.shadowCameraVisible = true;
-        spotlight.shadowDarkness = 0.95;
-        spotlight.intensity = 3;
+        //spotlight.shadowDarkness = 0.95;
+        spotlight.intensity = 2;
         // must enable shadow casting ability for the light
         //spotlight.castShadow = true;
         scene.add(spotlight);
 
 
-    var Ltexture = THREE.ImageUtils.loadTexture('skydome.jpg');
+    var Ltexture = THREE.ImageUtils.loadTexture('nebula.jpg');
     var backgroundMesh = new THREE.Mesh(
         new THREE.PlaneGeometry(2, 2, 0),
         new THREE.MeshBasicMaterial({map: Ltexture})
@@ -436,6 +443,45 @@ function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
     muro.scale.set(sc_x, sc_y, sc_z)
     muro.position.set(x, y, z);
     muro.rotation.y = r;
+
+    console.log(sc_x);
+
+    //floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+    //floorTexture.repeat.set( 10, 10 );
+
+    if (posters.length > 0) {
+        var texture_name = posters[Math.floor(Math.random()*posters.length)];
+        console.log(texture_name);
+        var posterTexture = new THREE.ImageUtils.loadTexture( texture_name );
+        posterTexture.needsUpdate = true;
+        var posterMaterial = new THREE.MeshBasicMaterial( { map: posterTexture, side: THREE.DoubleSide} );
+        //var posterMaterial = new THREE.MeshPhongMaterial( { color: 0xff0000, side: THREE.DoubleSide } );
+        var posterGeometry = new THREE.PlaneGeometry(200, 250);
+        var poster = new THREE.Mesh(posterGeometry, posterMaterial);
+        poster.position.set(parseInt(x), parseInt(y), parseInt(z));
+        poster.rotation.y = parseFloat(r);
+        console.log(poster.rotation.y);
+	if (sc_x == 200) {
+            if (poster.rotation.y < 0) {
+                poster.position.x -= 48;
+	    }
+	    else {
+                poster.position.z += 48;
+	    }
+	}
+	else {
+            if (poster.rotation.y < 0) {
+                poster.position.x -= 25; 
+	    }
+	    else {
+                poster.position.z += 25;
+	    }
+        }
+        poster.position.y += 50;
+        console.log(poster);
+        scene.add(poster);
+
+    }
     //muro.receiveShadow = true;
     //muro.castShadow = true;
     scene.add(muro);
