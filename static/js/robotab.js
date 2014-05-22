@@ -8,7 +8,6 @@ var ARENA_HEIGHT = 600;
 var hud_pos = 0;
 
 var scene, camera, eagleCamera, backCamera, renderer, backgroundScene, backgroundCamera;
-var superlight;
 var keyboard;
 var can_use_keyboard = false;
 
@@ -103,37 +102,19 @@ function ws_recv(e) {
 function init(){
     // console.log('init');
     scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(45, ARENA_WIDTH / ARENA_HEIGHT, 0.1, 10000);
-
-    camera.position.x = 0;
-    camera.position.y = 800;
-    camera.position.z = 0;
 
     eagleCamera = new THREE.PerspectiveCamera(45, ARENA_WIDTH / ARENA_HEIGHT, 0.1, 10000);
-
     eagleCamera.lookAt(scene.position);
     eagleCamera.position.x = 0;
     eagleCamera.position.y = 5000;
     eagleCamera.position.z = 0;
     eagleCamera.rotation.x = -Math.PI/2;
-
-    scene.add(camera);
     scene.add(eagleCamera);
 
     backCamera = new THREE.PerspectiveCamera(45, ARENA_WIDTH / ARENA_HEIGHT, 0.1, 10000);
 
     renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.setSize(ARENA_WIDTH, ARENA_HEIGHT);
-
-    renderer.shadowMapEnabled = true;
-    renderer.shadowCameraNear = 3;
-    renderer.shadowCameraFar = camera.far;
-    renderer.shadowCameraFov = 50;
-
-    renderer.shadowMapBias = 0.0039;
-    renderer.shadowMapDarkness = 0.5;
-    renderer.shadowMapWidth = 1024;
-    renderer.shadowMapHeight = 1024;
 
     container = document.getElementById("ThreeJS");
     container.appendChild(renderer.domElement);
@@ -149,22 +130,7 @@ function init(){
     var floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.position.y = -0.5;
     floor.rotation.x = Math.PI / 2;
-    floor.receiveShadow = true;
-
     scene.add(floor);
-
-    var light = new THREE.SpotLight( 0xffffff, 1 );
-    light.position.set(-100, 150, 0);
-    light.rotation.x += 1.9;
-
-    scene.add(light);
-
-    superlight = light;
-    light.castShadow = true;
-
-    var light = new THREE.DirectionalLight(0xffffff, 0.7);
-    light.position.set(0, 10, 0);
-    scene.add(light);
 
     var Ltexture = THREE.ImageUtils.loadTexture('skydome.jpg');
     var backgroundMesh = new THREE.Mesh(
@@ -248,26 +214,49 @@ function update() {
 
         if (keyboard.pressed("space")){
             ws.send(me+":AT");
+		document.getElementById('fire').pause();
+		document.getElementById('fire').currentTime = 0;
+		document.getElementById('fire').play();
         }
         // else if (players[me] && players[me].ws['a']){
         //     ws.send(me+":at");
         // }
+
+	var is_moving = false;
+
         if (keyboard.pressed("right")){
             ws.send(me + ":rr");
             rotating = true;
-            console.log('rr');
+		is_moving = true;
         }
         else if (keyboard.pressed("left")){
             ws.send(me + ":rl");
             rotating = true;
-            console.log('rl');
+		is_moving = true;
         }
+
+
         if (!rotating && keyboard.pressed("up")){
             ws.send(me + ":fw");
+		is_moving = true;
         }
+
         if (!rotating && keyboard.pressed("down")){
             ws.send(me + ":bw");
+		is_moving = true;
         }
+	
+	if (is_moving) {
+		if (document.getElementById('move').paused) {
+			document.getElementById('move').play();
+		}
+	}
+	else {
+		if (!document.getElementById('move').paused) {
+			document.getElementById('move').pause();
+			document.getElementById('move').currentTime = 0;
+		}
+	}
     }
 
     Object.keys(players).forEach(function(key){
@@ -328,11 +317,6 @@ function update() {
         player.dirty = false;
     });
 
-    if (players[me]){
-        camera.lookAt(players[me].position);
-    }
-
-    superlight.rotation.x += 0.1;
 }
 
 function add_player(name, avatar, x, y, z, r, scale) {
