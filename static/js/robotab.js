@@ -87,12 +87,16 @@ function ws_recv(e) {
         if (args[1] == me){
             use_eagle_camera = true;
             can_use_keyboard = false;
+            var h2_class, text;
             if (args[0] == 'winner'){
-                win();
+                h2_class = 'winner';
+                text = 'VICTORY';
             }
             else{
-                lose();
+                h2_class = 'loser';
+                text = 'GAME OVER';
             }
+            game_over(h2_class, text);
         }
         remove_player(players[args[1]]);
         return;
@@ -574,24 +578,13 @@ function start_websocket(){
     }
 }
 
-function win(){
+function game_over(h2_class, text){
     var threejs_div = document.getElementById('ThreeJS');
-    var win_div = document.createElement('div');
-    var win_h2 = document.createElement('h2');
-    win_div.id = 'game_over';
-    win_h2.innerHTML = 'YOU WIN';
-    win_h2.className = 'winner';
-    win_div.appendChild(win_h2);
-    threejs_div.appendChild(win_div);
-}
-
-function lose(){
-    var threejs_div = document.getElementById('ThreeJS');
-    var lose_div = document.createElement('div');
-    var lose_h2 = document.createElement('h2');
-    lose_div.id = 'game_over';
-    lose_h2.innerHTML = 'YOU LOSE';
-    lose_h2.className = 'loser';
-    lose_div.appendChild(lose_h2);
-    threejs_div.appendChild(lose_div);
+    var div = document.createElement('div');
+    var h2 = document.createElement('h2');
+    div.id = 'game_over';
+    h2.innerHTML = text;
+    h2.className = h2_class;
+    div.appendChild(h2);
+    threejs_div.appendChild(div);
 }
