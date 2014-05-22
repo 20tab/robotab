@@ -333,7 +333,7 @@ function update() {
             player.bullet.position.x = player.bullet.ws['x'];
             player.bullet.position.y = player.bullet.ws['y'];
             player.bullet.position.z = player.bullet.ws['z'];
-            console.log(player.bullet.ws['R']);
+            //console.log(player.bullet.ws['R']);
         }
 
         if (player.dirty) {
@@ -397,7 +397,8 @@ function add_player(name, avatar, x, y, z, r, scale) {
     var bullet = objects[2].ref.clone();
     bullet.scale.set(scale, scale, scale);
     bullet.children[0].visible = false;
-
+    //var axis = new THREE.Vector3(0, 1, 0);
+    //bullet.rotateOnAxis(axis, 90);
     scene.add(bullet);
     bullet.ws = {};
     players[name].bullet = bullet;
