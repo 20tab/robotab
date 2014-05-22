@@ -46,6 +46,7 @@ for (i in avatars) {
 }
 
 function ws_recv(e) {
+    console.log(e.data);
     // console.log(e.data);
     var items = e.data.split(':');
     if (items[0] == 'arena') {
@@ -269,9 +270,6 @@ function update() {
 
         if (keyboard.pressed("space")){
             ws.send(me+":AT");
-		document.getElementById('fire').pause();
-		document.getElementById('fire').currentTime = 0;
-		document.getElementById('fire').play();
         }
 /*
          else if (players[me] && players[me].ws['a']){
@@ -319,14 +317,23 @@ function update() {
     Object.keys(players).forEach(function(key){
         var player = players[key];
         if (player.bullet.dirty == true) {
-            player.bullet.visible = true;
+            if (document.getElementById('fire').paused) {
+		//document.getElementById('fire').pause();
+		document.getElementById('fire').currentTime = 0;
+		document.getElementById('fire').play();
+            }
+            player.bullet.dirty = false;
+            if (player.bullet.ws['R'] <= 0) {
+                player.bullet.children[0].visible = false;
+		document.getElementById('fire').pause();
+                return;
+            }
+            player.bullet.children[0].visible = true;
             player.bullet.rotation.y = player.bullet.ws['r'];
             player.bullet.position.x = player.bullet.ws['x'];
             player.bullet.position.y = player.bullet.ws['y'];
             player.bullet.position.z = player.bullet.ws['z'];
-            if (player.bullet.ws['R'] <= 0) {
-                player.bullet.visible = false;
-            }
+            console.log(player.bullet.ws['R']);
         }
 
         if (player.dirty) {
@@ -387,9 +394,10 @@ function add_player(name, avatar, x, y, z, r, scale) {
     //players[name].castShadow = true;
     //players[name].receiveShadow = true;
 
-    var bullet =  objects[2].ref.clone();
+    var bullet = objects[2].ref.clone();
     bullet.scale.set(scale, scale, scale);
-    bullet.visible = false;
+    bullet.children[0].visible = false;
+    console.log(bullet);
     scene.add(bullet);
     bullet.ws = {};
     players[name].bullet = bullet;
