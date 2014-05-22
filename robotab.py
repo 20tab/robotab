@@ -9,15 +9,16 @@ import redis
 import math
 
 
-class Robot(object):
+class ArenaObject(object):
 
-    def __init__(self, x, y, r):
+    def __init__(self, x, y, r, speed=15):
         self.height = 13.5
         self.width = 13.5
         self.scale = 5
         self.x = x
         self.y = y
         self.r = r
+        self.speed = speed
 
     def translate(self, amount):
         amount_x = math.sin(self.r) * amount
@@ -27,10 +28,16 @@ class Robot(object):
         #print('x:{}  y:{}  r:{}'.format(self.x, self.y, self.r))
 
     def rotateR(self):
-        self.r = 2 * math.pi if self.r <= 0 else self.r - 0.1
+        if self.r <= 0:
+            self.r = 2 * math.pi
+        else:
+            self.r - 0.1
 
     def rotateL(self):
-        self.r = 0 if self.r >= 2 * math.pi else self.r + 0.1
+        if self.r >= 2 * math.pi:
+            self.r = 0
+        else:
+            self.r + 0.1
 
     def collide(self, x, y, width, height):
 
@@ -111,7 +118,6 @@ class Arena(object):
 
     def attack_cmd_handler(self, player, cmd):
         if cmd == 'AT':
-            #print cmd
             player.bullet.shoot()
             player.attack = 1
             return True
@@ -123,31 +129,31 @@ class Arena(object):
 
     def cmd_handler(self, player, cmd):
         if cmd == 'rl':
-            player.robot.rotateL()
+            player.arena_object.rotateL()
             return True
 
         if cmd == 'rr':
-            player.robot.rotateR()
+            player.arena_object.rotateR()
             return True
 
         if cmd == 'fw':
-            old_x = player.robot.x
-            old_y = player.robot.y
-            player.robot.translate(15)
+            old_x = player.arena_object.x
+            old_y = player.arena_object.y
+            player.arena_object.translate(player.arena_object.speed)
             if (self.collision(player)):
-                player.robot.x = old_x
-                player.robot.y = old_y
-                player.robot.translate(-15)
+                player.arena_object.x = old_x
+                player.arena_object.y = old_y
+                player.arena_object.translate(-player.arena_object.speed)
             return True
 
         if cmd == 'bw':
-            old_x = player.robot.x
-            old_y = player.robot.y
-            player.robot.translate(-15)
+            old_x = player.arena_object.x
+            old_y = player.arena_object.y
+            player.arena_object.translate(-player.arena_object.speed)
             if (self.collision(player)):
-                player.robot.x = old_x
-                player.robot.y = old_y
-                player.robot.translate(15)
+                player.arena_object.x = old_x
+                player.arena_object.y = old_y
+                player.arena_object.translate(player.arena_object.speed)
             return True
 
         return False
@@ -157,11 +163,11 @@ class Arena(object):
             if self.players[p] == player:
                 continue
             #check for body collision
-            if player.robot.collide(
-                self.players[p].robot.x,
-                self.players[p].robot.y,
-                self.players[p].robot.width * self.players[p].robot.scale,
-                self.players[p].robot.height * self.players[p].robot.scale,
+            if player.arena_object.collide(
+                self.players[p].arena_object.x,
+                self.players[p].arena_object.y,
+                self.players[p].arena_object.width * self.players[p].arena_object.scale,
+                self.players[p].arena_object.height * self.players[p].arena_object.scale,
             ):
                 if player.attack == 1:
                     if self.players[p].attack == 0:
@@ -179,7 +185,7 @@ class Arena(object):
             else:
                 height = 20 * wall[0]
                 width = 1 * wall[2]
-            if player.robot.collide(wall[3], wall[5], width, height):
+            if player.arena_object.collide(wall[3], wall[5], width, height):
                 return True
         return False
 
@@ -267,13 +273,13 @@ class Arena(object):
 
 class Player(object):
 
-    def __init__(self, game, name, avatar, fd, x, y, r):
+    def __init__(self, game, name, avatar, fd, x, y, r, speed=15):
         self.game = game
         self.name = name
         self.avatar = avatar
         self.fd = fd
 
-        self.robot = Robot(x, y, r)
+        self.arena_object = ArenaObject(x, y, r, speed)
 
         self.attack = 0
         self.energy = 100.0
@@ -309,14 +315,14 @@ class Player(object):
     def update_gfx(self):
         msg = "{}:{},{},{},{},{},{},{},{}".format(
             self.name,
-            self.robot.r,
-            self.robot.x,
+            self.arena_object.r,
+            self.arena_object.x,
             30,
-            self.robot.y,
+            self.arena_object.y,
             self.attack,
             self.energy,
             self.avatar,
-            self.robot.scale
+            self.arena_object.scale
         )
         self.send_all(msg)
 
@@ -327,35 +333,36 @@ class Player(object):
 
 class Bullet(object):
 
-    def __init__(self, game, player, _range=1000.0):
+    def __init__(self, game, player, damage=10, speed=50, _range=1000.0):
         self.game = game
         self.player = player
-        self.robot = Robot(self.player.robot.x, self.player.robot.y, 0.0)
+        self.arena_object = ArenaObject(self.player.arena_object.x, self.player.arena_object.y, 0.0, speed)
         self.is_shooting = 0
         self._range = _range
+        self.damage = damage
 
     def shoot(self):
         if self.is_shooting > 0:
             return
-        self.robot.x = self.player.robot.x
-        self.robot.y = self.player.robot.y
-        self.robot.r = self.player.robot.r
+        self.arena_object.x = self.player.arena_object.x
+        self.arena_object.y = self.player.arena_object.y
+        self.arena_object.r = self.player.arena_object.r
         self.is_shooting = self._range
         self.player.damage(0.1, 'himself')
         self.game.animations.append(self)
 
     def animate(self):
-        self.robot.translate(50)
+        self.arena_object.translate(self.arena_object.speed)
         if self.collision():
             self.is_shooting = 0
         else:
-            self.is_shooting -= 50
+            self.is_shooting -= self.arena_object.speed
         msg = "!:{}:{},{},{},{},{}".format(
             self.player.name,
-            self.robot.r,
-            self.robot.x,
+            self.arena_object.r,
+            self.arena_object.x,
             50,
-            self.robot.y,
+            self.arena_object.y,
             self.is_shooting
         )
 
@@ -367,13 +374,13 @@ class Bullet(object):
         for p in self.game.players.keys():
             if self.game.players[p] == self.player:
                 continue
-            if self.robot.collide(
-                self.game.players[p].robot.x,
-                self.game.players[p].robot.y,
-                self.game.players[p].robot.width * self.game.players[p].robot.scale,
-                self.game.players[p].robot.height * self.game.players[p].robot.scale,
+            if self.arena_object.collide(
+                self.game.players[p].arena_object.x,
+                self.game.players[p].arena_object.y,
+                self.game.players[p].arena_object.width * self.game.players[p].arena_object.scale,
+                self.game.players[p].arena_object.height * self.game.players[p].arena_object.scale,
             ):
-                self.game.players[p].damage(10, self.player.name)
+                self.game.players[p].damage(self.damage, self.player.name)
                 return True
 
         for wall in self.game.walls:
@@ -383,7 +390,7 @@ class Bullet(object):
             else:
                 height = 19.5 * wall[0]
                 width = 1 * wall[2]
-            if self.robot.collide(wall[3], wall[5], width, height):
+            if self.arena_object.collide(wall[3], wall[5], width, height):
                 return True
         return False
 
