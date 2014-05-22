@@ -77,6 +77,11 @@ body {
     width: 200px;
 }
 
+#logo_twentytab{
+    position: absolute;
+    top:300px;
+}
+
 #background {
 
 }
