@@ -34,14 +34,13 @@ class ArenaObject(object):
         self.r = 0 if self.r >= 2 * math.pi else self.r + 0.1
 
     def collide(self, x, y, width, height):
-
         return (abs(self.x - x) * 2 < (self.width * self.scale + width)) and\
             (abs(self.y - y) * 2 < (self.height * self.scale + height))
 
 
 class Arena(object):
 
-    def __init__(self, min_players=1, max_players=8, warmup=1):
+    def __init__(self, min_players=2, max_players=8, warmup=1):
         self.greenlets = {
             #'engine': self.engine_start,
             'start': self.start
@@ -189,8 +188,10 @@ class Arena(object):
         print('engine started')
         while True:
             if len(self.players) == 0:
+                self.finished = True
                 break
-            if len(self.players) == 0:
+            if len(self.players) == 1:
+                self.finished = True
                 self.winning_logic()
                 break
             t = uwsgi.micros() / 1000.0
@@ -213,7 +214,6 @@ class Arena(object):
             delta = t1 - t
             if delta < 33.33:
                 gevent.sleep((33.33 - delta) / 1000.0)
-        self.finished = True
         #self.greenlets['engine'] = self.engine_start
         print("engine ended")
 
@@ -257,6 +257,13 @@ class Arena(object):
     # in the player list and start the game again
     # unless less than 2 players are available
     def winning_logic(self):
+        winner_name = self.players.keys()[0]
+        self.players[winner_name].end('winner')
+        countdown = 10
+        while countdown > 0:
+            self.broadcast('next game will start in {} seconds'.format(countdown))
+            gevent.sleep(1)
+            countdown -= 1
         self.finished = False
         self.players = {}
         if len(self.waiting_players) > 0:
@@ -294,14 +301,16 @@ class Player(object):
         # if after the death a single player remains, trigger the winning procedure
     def damage(self, amount, attacker):
         self.energy -= amount
-        self.update_gfx()
         if self.energy <= 0:
             self.game.broadcast(
                 '{} was killed by {}'.format(self.name, attacker)
             )
-            self.end()
+            self.end('loser')
+        else:
+            self.update_gfx()
 
-    def end(self):
+    def end(self, status):
+        self.send_all('kill:{},{}'.format(status, self.name))
         del self.game.players[self.name]
 
     def send_all(self, msg):
@@ -430,7 +439,7 @@ class Robotab(Arena):
                             print sys.exc_info()
                             player.end()
                             return [""]
-                        if msg:
+                        if msg and not self.finished:
                             self.msg_handler(player, msg)
                     elif fd == player.redis_fd:
                         msg = player.channel.parse_response()

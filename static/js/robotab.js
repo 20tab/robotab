@@ -22,7 +22,7 @@ var posters = [];
 var objects = [
     {texture: 'ROBO_01_TEXTURE.jpg', object: 'ROBO_01_OK.obj', ref: null},
     {texture: 'ROBO_02_TEXTURE.jpg', object: 'ROBO_02_OK.obj', ref: null},
-    {texture: 'missile_texture.jpg', object: 'missile.obj', ref: null},
+    {texture: 'missile_texture.jpg', object: 'missile.obj'   , ref: null},
     {texture: 'muro_texture.jpg'   , object: 'muro.obj'      , ref: null},
 ];
 
@@ -69,7 +69,14 @@ function ws_recv(e) {
         player.bullet.dirty = true;
         return;
     }
-    if(items[0] == 'walls'){
+
+    if (items[0] == 'kill'){
+        var args = cmd.split(',');
+        var status = args[0];
+        remove_player(args[1]);
+    }
+
+    if (items[0] == 'walls'){
         var wall_list = items[1].split(';');
         for (var i = 0; i < wall_list.length; i++){
             var args = wall_list[i].split(',');
@@ -101,7 +108,7 @@ function ws_recv(e) {
     if (player.energy > 0){
         player.name_and_energy = items[0] + ': ' + player.energy;
     }
-    else{
+    else {
         player.name_and_energy = items[0] + ' Dead'
     }
     player.dirty = true;
@@ -293,7 +300,7 @@ function update() {
             ws.send(me + ":bw");
 		is_moving = true;
         }
-	
+
 	if (is_moving) {
 		if (document.getElementById('move').paused) {
 			document.getElementById('move').play();
@@ -330,10 +337,6 @@ function update() {
         }
 
         if (player.dirty) {
-            if (player.energy <= 0) {
-                remove_player(player);
-            }
-
             draw_hud_div(player);
             player.rotation.y = parseFloat(player.ws['r']);
             player.position.x = parseFloat(player.ws['x']);
@@ -479,7 +482,7 @@ function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
 	}
 	else {
             if (poster.rotation.y < 0) {
-                poster.position.x -= 25; 
+                poster.position.x -= 25;
 	    }
 	    else {
                 poster.position.z += 25;
