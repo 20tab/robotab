@@ -40,7 +40,7 @@ class ArenaObject(object):
 
 class Arena(object):
 
-    def __init__(self, min_players=1, max_players=8, warmup=1):
+    def __init__(self, min_players=2, max_players=8, warmup=1):
         self.greenlets = {
             #'engine': self.engine_start,
             'start': self.start
@@ -190,7 +190,7 @@ class Arena(object):
             if len(self.players) == 0:
                 self.finished = True
                 break
-            if len(self.players) == 0:
+            if len(self.players) == 1:
                 self.finished = True
                 self.winning_logic()
                 break
@@ -257,7 +257,13 @@ class Arena(object):
     # in the player list and start the game again
     # unless less than 2 players are available
     def winning_logic(self):
-        self.broadcast("")
+        winner_name = self.players.keys()[0]
+        self.players[winner_name].end('winner')
+        countdown = 10
+        while countdown > 0:
+            self.broadcast('next game will start in {} seconds'.format(countdown))
+            gevent.sleep(1)
+            countdown -= 1
         self.finished = False
         self.players = {}
         if len(self.waiting_players) > 0:
@@ -304,7 +310,7 @@ class Player(object):
             self.update_gfx()
 
     def end(self, status):
-        self.send_all('kill:{},{}').format(status, self.name)
+        self.send_all('kill:{},{}'.format(status, self.name))
         del self.game.players[self.name]
 
     def send_all(self, msg):
@@ -433,7 +439,7 @@ class Robotab(Arena):
                             print sys.exc_info()
                             player.end()
                             return [""]
-                        if msg:
+                        if msg and not self.finished:
                             self.msg_handler(player, msg)
                     elif fd == player.redis_fd:
                         msg = player.channel.parse_response()
