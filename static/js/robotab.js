@@ -38,7 +38,7 @@ for (i in avatars) {
         }
         else{
             avatar = this.getAttribute('data-avatar');
-	    document.getElementById('ready'+avatar).play();
+	        document.getElementById('ready' + avatar).play();
             document.getElementById("select_player").remove();
             init();
         }
@@ -46,7 +46,6 @@ for (i in avatars) {
 }
 
 function ws_recv(e) {
-    //console.log(e.data);
     // console.log(e.data);
     var items = e.data.split(':');
     if (items[0] == 'arena') {
@@ -71,9 +70,36 @@ function ws_recv(e) {
     }
 
     if (items[0] == 'kill'){
-        var args = cmd.split(',');
-        var status = args[0];
-        remove_player(args[1]);
+
+        var args = items[1].split(',');
+        if (args[0] == 'winner'){
+            players[args[1]].name_and_energy = players[args[1]].name + ': Winner';
+            draw_hud_div(players[args[1]]);
+        }
+        else if (args[0] == 'loser'){
+            players[args[1]].name_and_energy = players[args[1]].name + ': Dead';
+        }
+        else if (args[0] == 'leaver'){
+            players[args[1]].name_and_energy = players[args[1]].name + ': Leaver';
+
+        }
+        draw_hud_div(players[args[1]]);
+        if (args[1] == me){
+            use_eagle_camera = true;
+            can_use_keyboard = false;
+            var h2_class, text;
+            if (args[0] == 'winner'){
+                h2_class = 'winner';
+                text = 'VICTORY';
+            }
+            else{
+                h2_class = 'loser';
+                text = 'GAME OVER';
+            }
+            game_over(h2_class, text);
+        }
+        remove_player(players[args[1]]);
+        return;
     }
 
     if (items[0] == 'walls'){
@@ -87,7 +113,7 @@ function ws_recv(e) {
 
     if (items[0] == 'posters') {
         posters = items[1].split(';');
-        console.log(posters);
+        // console.log(posters);
         return;
     }
 
@@ -105,12 +131,7 @@ function ws_recv(e) {
     player.ws['z'] = args[3];
     player.ws['a'] = args[4];
     player.energy = parseFloat(args[5]).toFixed(1);
-    if (player.energy > 0){
-        player.name_and_energy = items[0] + ': ' + player.energy;
-    }
-    else {
-        player.name_and_energy = items[0] + ' Dead'
-    }
+    player.name_and_energy = items[0] + ': ' + player.energy;
     player.dirty = true;
 };
 
@@ -441,12 +462,8 @@ function remove_player(player){
     scene.remove(player);
     // removeReferences(player);
     player.dirty = false;
+    console.log('removing player ' + player.name);
     delete players[player.name];
-    console.log(players);
-    if (player.name == me) {
-        use_eagle_camera = true;
-        can_use_keyboard = false;
-    }
 }
 
 function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
@@ -560,4 +577,15 @@ function start_websocket(){
     ws.onerror = function() {
         alert('ERROR');
     }
+}
+
+function game_over(h2_class, text){
+    var threejs_div = document.getElementById('ThreeJS');
+    var div = document.createElement('div');
+    var h2 = document.createElement('h2');
+    div.id = 'game_over';
+    h2.innerHTML = text;
+    h2.className = h2_class;
+    div.appendChild(h2);
+    threejs_div.appendChild(div);
 }

@@ -40,7 +40,7 @@ class ArenaObject(object):
 
 class Arena(object):
 
-    def __init__(self, min_players=2, max_players=8, warmup=1):
+    def __init__(self, min_players=3, max_players=8, warmup=1):
         self.greenlets = {
             #'engine': self.engine_start,
             'start': self.start
@@ -337,7 +337,7 @@ class Player(object):
 
 class Bullet(object):
 
-    def __init__(self, game, player, damage=10, speed=50, _range=1000.0):
+    def __init__(self, game, player, damage=10, speed=50, _range=1500.0):
         self.game = game
         self.player = player
         self.arena_object = ArenaObject(self.player.arena_object.x, self.player.arena_object.y, 0.0, speed)
@@ -437,7 +437,7 @@ class Robotab(Arena):
                         except IOError:
                             import sys
                             print sys.exc_info()
-                            player.end()
+                            player.end('leaver')
                             return [""]
                         if msg and not self.finished:
                             self.msg_handler(player, msg)

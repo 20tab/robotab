@@ -82,6 +82,27 @@ body {
     top:300px;
 }
 
+#game_over{
+    background-color: black;
+    position: absolute;
+    top:150px; left: 0;
+    padding:0;
+    width: 800px;
+    height: 150px;
+    text-align: center;
+    line-height: 150px;
+    font: 40px Impact;
+    font-weight: bold;
+    opacity: 0.7;
+    z-index: 99999;
+}
+h2.loser{
+    color: red;
+}
+h2.winner{
+    color: green;
+}
+
 #background {
 
 }
