@@ -6,7 +6,6 @@
 <body>
 <script src="static/js/three.min.js"></script>
 <script src="static/js/OBJLoader.js"></script>
-<script src="static/js/newColladaLoader.js"></script>
 <script src="static/js/THREEx.FullScreen.js"></script>
 <script src="static/js/THREEx.KeyboardState.js"></script>
 
@@ -36,11 +35,14 @@ void main()
     gl_FragColor = vec4( glow, 1.0 );
 }
 </script>
-    <div id="ThreeJS">
-    <div id="game_over" style="display:block;">
-        <div id="username_div">USERNAME<br><input type="text" name="username_input" id="username_input" onclick="getUsername();"></div>
-        <h3 id="play_again" style="display: block;">PLAY</h3>
+<div id="background">
+    <div id="select_player" class="start_game">
+        <div id="username_div">USERNAME<br/><input type="text" name="username_input" id="username_input"/></div>
+        <img id="robot_one" data-avatar="1" class="choose_player" src="" alt="robot_one" title="robot_one" />
+        <img id="robot_two" data-avatar="2" class="choose_player" src="" alt="robot_two" title="robot_two" />
     </div>
+</div>
+    <div id="ThreeJS">
     </div>
 <div id="hud"># waiting for players...</div>
 
@@ -62,11 +64,30 @@ void main()
 
     var container;
     var raycaster;
-    var me = location.search.substring(1);
+    var me, avatar;
     var players = {};
     var walls = [];
     var invisible_walls = [];
-    var Robot;
+    var RobotOne, RobotTwo;
+    var Muro;
+
+    var avatars = document.getElementsByClassName('choose_player');
+    for (i in avatars) {
+        avatars[i].onclick = function(){
+            var username_input = document.getElementById('username_input');
+            me = username_input.value;
+            var pattern = /^[a-zA-Z0-9- ]*$/;
+            if (me == '' || !pattern.test(me)){
+                // username_input.setAttribute('border', '5px red solid');
+                // username_input.border = "5px red solid;";
+            }
+            else{
+                avatar = this.getAttribute('data-avatar');
+                document.getElementById("select_player").remove();
+                init();
+            }
+        }
+    }
 
     function ws_recv(e) {
         // console.log(e.data);
@@ -94,48 +115,10 @@ void main()
         }
         if(items[0] == 'walls'){
             var wall_list = items[1].split(';');
-
-            var manager = new THREE.LoadingManager();
-            manager.onProgress = function ( item, loaded, total ) {
-                // console.log( item, loaded, total );
-            };
-
-            var muro_texture = new THREE.Texture();
-            var muro_loader = new THREE.ImageLoader(manager);
-            muro_loader.load('muro_texture.jpg', function (image) {
-                muro_texture.image = image;
-                muro_texture.needsUpdate = true;
-            });
-
-            var Muro;
-
-            var arena_loader = new THREE.OBJLoader(manager);
-            arena_loader.load('muro.obj', function (object){
-                object.traverse(function (child) {
-                    if (child instanceof THREE.Mesh) {
-                        child.material.map = muro_texture;
-                    }
-                });
-                object.children[0].geometry.computeFaceNormals();
-                var  geometry = object.children[0].geometry;
-                THREE.GeometryUtils.center(geometry);
-
-                Muro = object;
-                Muro.children[0].material.transparent = true;
-
-                var i;
-                for (i = 0; i < wall_list.length; i++){
-                    var args = wall_list[i].split(',');
-
-                    var muro = Muro.clone();
-                    muro.children[0].material = Muro.children[0].material.clone();
-                    muro.scale.set(args[0], args[1], args[2])
-                    muro.position.set(args[3], args[4], args[5]);
-                    muro.rotation.y = args[6];
-                    scene.add(muro);
-                    walls.push(muro);
-                }
-            });
+            for (var i = 0; i < wall_list.length; i++){
+                var args = wall_list[i].split(',');
+                add_wall(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
+            }
             return;
         }
 
@@ -143,7 +126,7 @@ void main()
         var cmd = items[1];
         var args = cmd.split(',');
         if (player == undefined) {
-            add_player(items[0], args[1], args[2], args[3], args[0]);
+            add_player(items[0], args[6], args[1], args[2], args[3], args[0]);
             player = players[items[0]];
         }
         player.ws['r'] = args[0];
@@ -224,24 +207,89 @@ void main()
         light.position.set(0, 10, 0);
         scene.add(light);
 
-        var loader = new THREE.ColladaLoader();
-        loader.load('prova_joint.dae', function (geometry, materials) {
-            Robot = geometry.scene;
-            Robot.castShadow = true;
-            Robot.receiveShadow = true;
-            Robot.animations = geometry.animations;
-            Robot.skin = geometry.skins[0];
+        var manager = new THREE.LoadingManager();
+        manager.onProgress = function ( item, loaded, total ) {
+            // console.log( item, loaded, total );
+        };
 
-            ws = new WebSocket('ws://127.0.0.1:8080/robotab?' + me);
-            ws.onopen = start_the_world;
-            ws.onmessage = ws_recv;
-            ws.oncolose = function() {
-                alert('connection closed');
-            }
-            ws.onerror = function() {
-                alert('ERROR');
-            }
+        var robot_one_texture = new THREE.Texture();
+        var robot_one_image_loader = new THREE.ImageLoader(manager);
+        robot_one_image_loader.load('ROBO_01_TEXTURE.jpg', function (image) {
+            robot_one_texture.image = image;
+            robot_one_texture.needsUpdate = true;
         });
+
+        var robot_one_obj_loader = new THREE.OBJLoader(manager);
+        robot_one_obj_loader.load('ROBO_01_OK.obj', function (object){
+            object.traverse(function (child) {
+                if (child instanceof THREE.Mesh) {
+                    child.material.map = robot_one_texture;
+                }
+            });
+            object.children[0].geometry.computeFaceNormals();
+            var  geometry = object.children[0].geometry;
+            THREE.GeometryUtils.center(geometry);
+
+            RobotOne = object;
+            RobotOne.castShadow = true;
+            RobotOne.receiveShadow = true;
+        });
+        var robot_two_texture = new THREE.Texture();
+        var robot_two_image_loader = new THREE.ImageLoader(manager);
+        robot_two_image_loader.load('ROBO_02_TEXTURE.jpg', function (image) {
+            robot_two_texture.image = image;
+            robot_two_texture.needsUpdate = true;
+        });
+
+        var robot_two_obj_loader = new THREE.OBJLoader(manager);
+        robot_two_obj_loader.load('ROBO_02_OK.obj', function (object){
+            object.traverse(function (child) {
+                if (child instanceof THREE.Mesh) {
+                    child.material.map = robot_two_texture;
+                }
+            });
+            object.children[0].geometry.computeFaceNormals();
+            var  geometry = object.children[0].geometry;
+            THREE.GeometryUtils.center(geometry);
+
+            RobotTwo = object;
+            RobotTwo.castShadow = true;
+            RobotTwo.receiveShadow = true;
+        });
+
+        var muro_texture = new THREE.Texture();
+        var muro_loader = new THREE.ImageLoader(manager);
+        muro_loader.load('muro_texture.jpg', function (image) {
+            muro_texture.image = image;
+            muro_texture.needsUpdate = true;
+        });
+
+        var arena_loader = new THREE.OBJLoader(manager);
+        arena_loader.load('muro.obj', function (object){
+            object.traverse(function (child) {
+                if (child instanceof THREE.Mesh) {
+                    child.material.map = muro_texture;
+                }
+            });
+            object.children[0].geometry.computeFaceNormals();
+            var  geometry = object.children[0].geometry;
+            THREE.GeometryUtils.center(geometry);
+
+            Muro = object;
+            Muro.children[0].material.transparent = true;
+        });
+
+        ws = new WebSocket('ws://127.0.0.1:8080/robotab');
+
+        ws.onopen = start_the_world;
+        ws.onmessage = ws_recv;
+        ws.oncolose = function() {
+            alert('connection closed');
+        }
+        ws.onerror = function() {
+            alert('ERROR');
+
+        }
 
         var Ltexture = THREE.ImageUtils.loadTexture('skydome.jpg');
         var backgroundMesh = new THREE.Mesh(
@@ -259,9 +307,10 @@ void main()
         keyboard = new THREEx.KeyboardState();
     }
 
-    init();
+    // init();
 
     function start_the_world() {
+        ws.send(me + ':' + avatar);
         // console.log('start_the_world');
         animate();
     }
@@ -288,12 +337,12 @@ void main()
         renderer.clear();
         renderer.render(backgroundScene, backgroundCamera);
 
-        // if (use_eagle_camera) {
-        //     renderer.render(scene, eagleCamera);
-        // }
-        // else {
-        //     renderer.render(scene, backCamera);
-        // }
+        if (use_eagle_camera) {
+            renderer.render(scene, eagleCamera);
+        }
+        else {
+            renderer.render(scene, backCamera);
+        }
     }
 
     function update() {
@@ -324,7 +373,13 @@ void main()
             // else if (players[me] && players[me].ws['a']){
             //     ws.send(me+":at");
             // }
+            // if (keyboard.pressed("alt+right")){
 
+            //     camera_changed = true
+            // }
+            // else if (keyboard.pressed("alt+left"){
+            //     camera_changed = true
+            // }
             if (keyboard.pressed("right")){
                 ws.send(me + ":rr");
                 rotating = true;
@@ -353,7 +408,6 @@ void main()
                 if (player.bullet.ws['R'] <= 0) {
                     player.bullet.visible = false;
                     player.bullet.children[0].visible = false;
-
                 }
             }
 
@@ -392,7 +446,7 @@ void main()
                     }
                 }
                 for (i = 0; i < obstacles.length; i++){
-                    obstacles[i].object.material.opacity = 0.6;
+                    obstacles[i].object.material.opacity = 0.5;
                     invisible_walls.push(obstacles[i]);
                 }
                 camera_changed = false;
@@ -405,22 +459,18 @@ void main()
         }
 
         superlight.rotation.x += 0.1;
-
-        var delta = clock.getDelta();
-        THREE.AnimationHandler.update(delta);
     }
 
-    function add_player(name, x, y, z, r) {
+    function add_player(name, avatar, x, y, z, r, scale) {
         // console.log('add_player');
-        players[name] = Robot.clone();
-
-        // players[name].castShadow = true;
-        // players[name].receiveShadow = true;
-        players[name].children[1].children[0].material.color.setHex(Math.random() * 0xffffff);
-
-        var cingolo = players[name].children[0];
-        players[name].cingolo = cingolo;
-
+        if (avatar == '1'){
+            players[name] = RobotOne.clone();
+        }
+        else{
+            players[name] = RobotTwo.clone();
+        }
+        players[name].children[0].material = players[name].children[0].material.clone()
+        players[name].children[0].material.color.setHex(Math.random() * 0xffffff);
         players[name].name = name;
         players[name].scale.set(5, 5, 5);
         players[name].energy = 100.0;
@@ -452,6 +502,7 @@ void main()
         players[name].bullet = bullet;
 
         var spotLight = new THREE.PointLight(0xff00ff, 1.0, 200);
+        spotLight.visible = false;
         players[name].bullet.add(spotLight);
 
         players[name].ws = {'x':0.0, 'y':0.0, 'z':0.0, 'r':0.0, 'a':0};
@@ -471,7 +522,6 @@ void main()
             players[name].add(backCamera);
             backCamera.position.set(0, 10, -80);
             backCamera.lookAt(players[name].position);
-            // players[name].updateMatrixWorld();
             players[name].updateMatrixWorld();
             var position_vector = new THREE.Vector3();
             var position = position_vector.setFromMatrixPosition(backCamera.matrixWorld);
@@ -485,14 +535,8 @@ void main()
         players[name].position.z = parseFloat(z);
         players[name].rotation.y = parseFloat(r);
         scene.add(players[name]);
-        THREE.AnimationHandler.add(cingolo.children[0].geometry.animation);
-        var animation = new THREE.Animation(cingolo, cingolo.children[0].geometry.animation.name);
-        // console.log("animation");
-        animation.loop = true;
-        animation.play();
-        players[name].animation = animation;
-
     }
+
 
     function remove_player(player){
         scene.remove(player.bullet);
@@ -502,10 +546,19 @@ void main()
         delete players[player.name];
         console.log(players);
         if (player.name == me) {
-            // use_back_camera = 0;
             use_eagle_camera = true;
             can_use_keyboard = false;
         }
+    }
+
+    function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
+        var muro = Muro.clone();
+        muro.children[0].material = Muro.children[0].material.clone();
+        muro.scale.set(sc_x, sc_y, sc_z)
+        muro.position.set(x, y, z);
+        muro.rotation.y = r;
+        scene.add(muro);
+        walls.push(muro);
     }
 
     function draw_huds() {
@@ -565,9 +618,7 @@ void main()
       }catch(e){}
     }
 
-    function getUsername(){
-        console.log(document.getElementById('username_input').value);
-    }
+
 </script>
 
 </body>

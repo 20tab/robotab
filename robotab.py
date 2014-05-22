@@ -12,9 +12,9 @@ import math
 class Robot(object):
 
     def __init__(self, x, y, r):
-        self.height = 75
-        self.width = 75
-        self.scale = 1
+        self.height = 13.5
+        self.width = 13.5
+        self.scale = 5
         self.x = x
         self.y = y
         self.r = r
@@ -40,7 +40,7 @@ class Robot(object):
 
 class Arena(object):
 
-    def __init__(self, max_players=8, warmup=10):
+    def __init__(self, min_players=3, max_players=8, warmup=1):
         self.greenlets = {
             #'engine': self.engine_start,
             'start': self.start
@@ -49,6 +49,7 @@ class Arena(object):
         self.animations = []
         self.players = {}
         self.waiting_players = []
+        self.min_players = min_players
         self.max_players = max_players
         self.warmup = warmup
         self.started = False
@@ -248,7 +249,7 @@ class Arena(object):
 
     def spawn_greenlets(self):
         for greenlet in self.greenlets:
-            if len(self.players) >= 5:
+            if len(self.players) >= self.min_players:
                 gevent.spawn(self.greenlets[greenlet])
 
     # place up to 8 waiting_players
@@ -266,9 +267,10 @@ class Arena(object):
 
 class Player(object):
 
-    def __init__(self, game, name, fd, x, y, r):
+    def __init__(self, game, name, avatar, fd, x, y, r):
         self.game = game
         self.name = name
+        self.avatar = avatar
         self.fd = fd
 
         self.robot = Robot(x, y, r)
@@ -305,14 +307,16 @@ class Player(object):
         self.redis.publish(self.arena, msg)
 
     def update_gfx(self):
-        msg = "{}:{},{},{},{},{},{}".format(
+        msg = "{}:{},{},{},{},{},{},{},{}".format(
             self.name,
             self.robot.r,
             self.robot.x,
-            50,
+            30,
             self.robot.y,
             self.attack,
-            self.energy
+            self.energy,
+            self.avatar,
+            self.robot.scale
         )
         self.send_all(msg)
 
@@ -389,15 +393,15 @@ class Robotab(Arena):
     def __call__(self, e, sr):
         if e['PATH_INFO'] == '/robotab':
             uwsgi.websocket_handshake()
-            uwsgi.websocket_send('walls:{}'.format(str(self.walls).replace('),', ';').translate(None, "()")))
-
+            username, avatar = uwsgi.websocket_recv().split(':')
             try:
                 robot_coordinates = self.spawn_iterator.next()
             except StopIteration:
                 self.spawn_iterator = iter(self.spawn_points)
                 robot_coordinates = self.spawn_iterator.next()
 
-            player = Player(self, e['QUERY_STRING'], uwsgi.connection_fd(), *robot_coordinates)
+            uwsgi.websocket_send('walls:{}'.format(str(self.walls).replace('),', ';').translate(None, "()")))
+            player = Player(self, username, avatar, uwsgi.connection_fd(), *robot_coordinates)
 
             if self.started or len(self.players) > self.max_players or len(self.waiting_players) > 0:
                 print("hey {}, game already started or is full, wait for next one...".format(player.name))
@@ -411,14 +415,11 @@ class Robotab(Arena):
             while True:
                 ready = gevent.select.select([player.fd, player.redis_fd], [], [], timeout=4.0)
 
-                # ?!?!?!?!?!?!?!?!!?!?!?!??!?!
                 if not ready[0]:
                     uwsgi.websocket_recv_nb()
-                # ?!?!?!?!?!?!?!?!!?!?!?!??!?!
 
                 for fd in ready[0]:
                     if fd == player.fd:
-                        # ?!?!?!?!?!?!?!?!!?!?!?!??!?!
                         try:
                             msg = uwsgi.websocket_recv_nb()
                         except IOError:
@@ -426,7 +427,6 @@ class Robotab(Arena):
                             print sys.exc_info()
                             player.end()
                             return [""]
-                        # ?!?!?!?!?!?!?!?!!?!?!?!??!?!
                         if msg:
                             self.msg_handler(player, msg)
                     elif fd == player.redis_fd:
