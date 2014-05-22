@@ -80,6 +80,7 @@ function ws_recv(e) {
     if (items[0] == 'posters') {
         posters = items[1].split(';');
         console.log(posters);
+        return;
     }
 
     var player = players[items[0]];
@@ -442,6 +443,24 @@ function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
     muro.scale.set(sc_x, sc_y, sc_z)
     muro.position.set(x, y, z);
     muro.rotation.y = r;
+
+    //floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+    //floorTexture.repeat.set( 10, 10 );
+
+    if (posters.length > 0) {
+        var posterTexture = new THREE.ImageUtils.loadTexture( posters[Math.floor(Math.random()*posters.length)]);
+        posterTexture.needsUpdate = true;
+        var posterMaterial = new THREE.MeshBasicMaterial( { map: posterTexture, side: THREE.DoubleSide} );
+        //var posterMaterial = new THREE.MeshPhongMaterial( { color: 0xff0000, side: THREE.DoubleSide } );
+        var posterGeometry = new THREE.PlaneGeometry(200, 250);
+        var poster = new THREE.Mesh(posterGeometry, posterMaterial);
+        poster.position.set(parseInt(x), parseInt(y), parseInt(z));
+        poster.rotation.y = r;
+        poster.position.x += 22;
+        poster.position.y += 50;
+        console.log(poster);
+        scene.add(poster);
+    }
     //muro.receiveShadow = true;
     //muro.castShadow = true;
     scene.add(muro);
