@@ -139,7 +139,7 @@ function init(){
     var ambient = new THREE.AmbientLight(0x333333);
     scene.add(ambient);
 
-    var floorTexture = new THREE.ImageUtils.loadTexture( 'metal17.jpg' );
+    var floorTexture = new THREE.ImageUtils.loadTexture( 'panel35.jpg' );
     floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
     floorTexture.repeat.set( 10, 10 );
     var floorMaterial = new THREE.MeshPhongMaterial( { map: floorTexture , side: THREE.DoubleSide } );
@@ -445,6 +445,11 @@ function loadObjects3d(objects3d, index, manager){
     if (index >= objects3d.length){
         objects[2].ref.children[0].material.transparent = true;
         start_websocket();
+<<<<<<< HEAD
+=======
+	return;
+    }
+>>>>>>> 7824260964fe32b987922c8b97982f906a90fac3
 
     }
     console.log(objects3d[index]);
