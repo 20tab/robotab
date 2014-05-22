@@ -173,7 +173,7 @@ function init(){
         scene.add(spotlight);
 
 
-    var Ltexture = THREE.ImageUtils.loadTexture('skydome.jpg');
+    var Ltexture = THREE.ImageUtils.loadTexture('nebula.jpg');
     var backgroundMesh = new THREE.Mesh(
         new THREE.PlaneGeometry(2, 2, 0),
         new THREE.MeshBasicMaterial({map: Ltexture})
