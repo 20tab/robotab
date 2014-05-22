@@ -28,16 +28,10 @@ class ArenaObject(object):
         #print('x:{}  y:{}  r:{}'.format(self.x, self.y, self.r))
 
     def rotateR(self):
-        if self.r <= 0:
-            self.r = 2 * math.pi
-        else:
-            self.r - 0.1
+        self.r = 2 * math.pi if self.r <= 0 else self.r - 0.1
 
     def rotateL(self):
-        if self.r >= 2 * math.pi:
-            self.r = 0
-        else:
-            self.r + 0.1
+        self.r = 0 if self.r >= 2 * math.pi else self.r + 0.1
 
     def collide(self, x, y, width, height):
 
