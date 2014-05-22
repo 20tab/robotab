@@ -444,6 +444,8 @@ function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
     muro.position.set(x, y, z);
     muro.rotation.y = r;
 
+    console.log(sc_x);
+
     //floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
     //floorTexture.repeat.set( 10, 10 );
 
@@ -457,8 +459,24 @@ function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
         var posterGeometry = new THREE.PlaneGeometry(200, 250);
         var poster = new THREE.Mesh(posterGeometry, posterMaterial);
         poster.position.set(parseInt(x), parseInt(y), parseInt(z));
-        poster.rotation.y = r;
-        poster.position.x -= 23;
+        poster.rotation.y = parseFloat(r);
+        console.log(poster.rotation.y);
+	if (sc_x == 200) {
+            if (poster.rotation.y < 0) {
+                poster.position.x -= 48;
+	    }
+	    else {
+                poster.position.z += 48;
+	    }
+	}
+	else {
+            if (poster.rotation.y < 0) {
+                poster.position.x -= 25; 
+	    }
+	    else {
+                poster.position.z += 25;
+	    }
+        }
         poster.position.y += 50;
         console.log(poster);
         scene.add(poster);
