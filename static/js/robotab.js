@@ -37,6 +37,7 @@ for (i in avatars) {
         }
         else{
             avatar = this.getAttribute('data-avatar');
+	    document.getElementById('ready'+avatar).play();
             document.getElementById("select_player").remove();
             init();
         }
