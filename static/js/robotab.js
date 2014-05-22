@@ -79,7 +79,8 @@ function ws_recv(e) {
     var cmd = items[1];
     var args = cmd.split(',');
     if (player == undefined) {
-        add_player(items[0], args[6], args[1], args[2], args[3], args[0]);
+        // (name, avatar, x, y, z, r, scale)
+        add_player(items[0], args[6], args[1], args[2], args[3], args[0], args[7]);
         player = players[items[0]];
     }
     player.ws['r'] = args[0];
@@ -244,26 +245,21 @@ function update() {
             is_pressing = false;
         }
 
-        if (keyboard.pressed("space")) {
+        if (keyboard.pressed("space")){
             ws.send(me+":AT");
         }
         // else if (players[me] && players[me].ws['a']){
         //     ws.send(me+":at");
         // }
-        // if (keyboard.pressed("alt+right")){
-
-        //     camera_changed = true
-        // }
-        // else if (keyboard.pressed("alt+left"){
-        //     camera_changed = true
-        // }
         if (keyboard.pressed("right")){
             ws.send(me + ":rr");
             rotating = true;
+            console.log('rr');
         }
         else if (keyboard.pressed("left")){
             ws.send(me + ":rl");
             rotating = true;
+            console.log('rl');
         }
         if (!rotating && keyboard.pressed("up")){
             ws.send(me + ":fw");
@@ -349,7 +345,7 @@ function add_player(name, avatar, x, y, z, r, scale) {
     players[name].children[0].material = players[name].children[0].material.clone()
     players[name].children[0].material.color.setHex(Math.random() * 0xffffff);
     players[name].name = name;
-    players[name].scale.set(5, 5, 5);
+    players[name].scale.set(scale, scale, scale);
     players[name].energy = 100.0;
     players[name].name_and_energy = name + ': 100.0';
 
@@ -445,14 +441,9 @@ function loadObjects3d(objects3d, index, manager){
     if (index >= objects3d.length){
         objects[2].ref.children[0].material.transparent = true;
         start_websocket();
-<<<<<<< HEAD
-=======
-	return;
+        return;
     }
->>>>>>> 7824260964fe32b987922c8b97982f906a90fac3
 
-    }
-    console.log(objects3d[index]);
     var texture = new THREE.Texture();
     var image_loader = new THREE.ImageLoader(manager);
     image_loader.load(objects3d[index].texture, function (image) {
