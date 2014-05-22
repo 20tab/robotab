@@ -414,7 +414,7 @@ function add_player(name, avatar, x, y, z, r, scale) {
     var bullet = objects[2].ref.clone();
     bullet.scale.set(scale, scale, scale);
     bullet.children[0].visible = false;
-    console.log(bullet);
+
     scene.add(bullet);
     bullet.ws = {};
     players[name].bullet = bullet;
@@ -468,7 +468,7 @@ function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
     muro.position.set(x, y, z);
     muro.rotation.y = r;
 
-    console.log(sc_x);
+    //console.log(sc_x);
 
     //floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
     //floorTexture.repeat.set( 10, 10 );
@@ -484,7 +484,7 @@ function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
         var poster = new THREE.Mesh(posterGeometry, posterMaterial);
         poster.position.set(parseInt(x), parseInt(y), parseInt(z));
         poster.rotation.y = parseFloat(r);
-        console.log(poster.rotation.y);
+        //console.log(poster.rotation.y);
 	if (sc_x == 200) {
             if (poster.rotation.y < 0) {
                 poster.position.x -= 48;
@@ -502,7 +502,7 @@ function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
 	    }
         }
         poster.position.y += 50;
-        console.log(poster);
+        //console.log(poster);
         scene.add(poster);
 
     }
