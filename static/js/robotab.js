@@ -445,8 +445,9 @@ function loadObjects3d(objects3d, index, manager){
     if (index >= objects3d.length){
         objects[2].ref.children[0].material.transparent = true;
         start_websocket();
-    }
 
+    }
+    console.log(objects3d[index]);
     var texture = new THREE.Texture();
     var image_loader = new THREE.ImageLoader(manager);
     image_loader.load(objects3d[index].texture, function (image) {
