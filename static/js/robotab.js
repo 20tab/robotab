@@ -50,7 +50,7 @@ for (i in avatars) {
 }
 
 function ws_recv(e) {
-     console.log(e.data);
+     //console.log(e.data);
     var items = e.data.split(':');
     if (items[0] == 'arena') {
         var args = items[1].split(',');
@@ -365,11 +365,13 @@ function update() {
             }
             player.bullet.dirty = false;
             if (player.bullet.ws['R'] <= 0) {
-                player.bullet.children[0].visible = false;
+                //player.bullet.children[0].visible = false;
+                player.bullet.visible = false;
 		        document.getElementById('fire').pause();
                 return;
             }
-            player.bullet.children[0].visible = true;
+            //player.bullet.children[0].visible = true;
+            player.bullet.visible = true;
             player.bullet.rotation.y = player.bullet.ws['r'];
             player.bullet.position.x = player.bullet.ws['x'];
             player.bullet.position.y = player.bullet.ws['y'];
@@ -435,10 +437,15 @@ function add_player(name, avatar, x, y, z, r, scale, color) {
     //players[name].castShadow = true;
     //players[name].receiveShadow = true;
 
-    var bullet = objects[2].ref.clone();
+    //var bullet = objects[2].ref.clone();
+    var geometry = new THREE.SphereGeometry( 3, 32, 32 );
+    var material = new THREE.MeshPhongMaterial({ transparent: true, opacity: 0.7});
+    material.color.setHex(color);
+    var bullet = new THREE.Mesh( geometry, material );
 
     bullet.scale.set(scale, scale, scale);
-    bullet.children[0].visible = false;
+    //bullet.children[0].visible = false;
+    bullet.visible = false;
     //var axis = new THREE.Vector3(0, 1, 0);
     //bullet.rotateOnAxis(axis, 90);
     scene.add(bullet);
