@@ -40,12 +40,11 @@ class ArenaObject(object):
             self.r += 0.1
 
     def collide(self, x, y, width, height):
-        x = abs(self.x - x) * 2
-        w = self.width * self.scale + width
-        y = abs(self.y - y) * 2
-        h = self.height * self.scale + height
-        return (x < w) and (y < h)
-
+        dx = abs(self.x - x) * 2
+        dw = self.width * self.scale + width
+        dy = abs(self.y - y) * 2
+        dh = self.height * self.scale + height
+        return (dx < dw) and (dy < dh)
 
 class Bonus(object):
 
