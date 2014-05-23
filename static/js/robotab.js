@@ -629,7 +629,7 @@ function loadObjects3d(objects3d, index, manager){
 }
 
 function start_websocket(){
-    ws = new WebSocket('ws://127.0.0.1:8080/robotab');
+    ws = new WebSocket('ws://${HTTP_HOST}/robotab');
     ws.onopen = start_the_world;
     ws.onmessage = ws_recv;
     ws.oncolose = function() {

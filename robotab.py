@@ -505,6 +505,15 @@ class Bullet(object):
 class Robotab(Arena):
 
     def __call__(self, e, sr):
+        if e['PATH_INFO'] == '/':
+            sr('200 OK',[('Content-Type','text/html')])
+            return [open('robotab_ws.html').read()]
+
+        if e['PATH_INFO'] == '/robotab.js':
+            sr('200 OK',[('Content-Type','application/javascript')])
+            return [open('static/js/robotab.js').read()]
+
+
         if e['PATH_INFO'] == '/robotab':
             uwsgi.websocket_handshake()
             username, avatar = uwsgi.websocket_recv().split(':')
