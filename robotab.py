@@ -28,15 +28,23 @@ class ArenaObject(object):
         #print('x:{}  y:{}  r:{}'.format(self.x, self.y, self.r))
 
     def rotateR(self):
-        self.r = 2 * math.pi if self.r <= 0 else self.r - 0.1
+        if self.r <= 0:
+            self.r = 2 * math.pi
+        else:
+            self.r -= 0.1
 
     def rotateL(self):
-        self.r = 0 if self.r >= 2 * math.pi else self.r + 0.1
+        if self.r >= 2 * math.pi:
+            self.r = 0
+        else:
+            self.r += 0.1
 
     def collide(self, x, y, width, height):
-        return (abs(self.x - x) * 2 < (self.width * self.scale + width)) and\
-            (abs(self.y - y) * 2 < (self.height * self.scale + height))
-
+        dx = abs(self.x - x) * 2
+        dw = self.width * self.scale + width
+        dy = abs(self.y - y) * 2
+        dh = self.height * self.scale + height
+        return (dx < dw) and (dy < dh)
 
 class Bonus(object):
 
@@ -497,6 +505,15 @@ class Bullet(object):
 class Robotab(Arena):
 
     def __call__(self, e, sr):
+        if e['PATH_INFO'] == '/':
+            sr('200 OK',[('Content-Type','text/html')])
+            return [open('robotab_ws.html').read()]
+
+        if e['PATH_INFO'] == '/robotab.js':
+            sr('200 OK',[('Content-Type','application/javascript')])
+            return [open('static/js/robotab.js').read()]
+
+
         if e['PATH_INFO'] == '/robotab':
             uwsgi.websocket_handshake()
             username, avatar = uwsgi.websocket_recv().split(':')
