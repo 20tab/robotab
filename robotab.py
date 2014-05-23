@@ -97,7 +97,7 @@ class BonusHeal(Bonus):
 
 class Arena(object):
 
-    def __init__(self, min_players=3, max_players=8, warmup=1):
+    def __init__(self, min_players=2, max_players=8, warmup=1):
         self.greenlets = {
             #'engine': self.engine_start,
             'start': self.start
@@ -120,33 +120,34 @@ class Arena(object):
             (200,     100,     50,  1950,     150,     0, -math.pi / 2),
             (200,     100,     50,     0,     150,  1950,            0),
 
-            ( 50,     50,     30,  -730,     150, -1200,            0),
-            ( 50,     50,     30,   730,     150, -1200,            0),
+            ( 50,      50,     30,  -730,     150, -1200,            0),
+            ( 50,      50,     30,   730,     150, -1200,            0),
 
-            ( 50,     50,     30, -1200,     150,  -730, -math.pi / 2),
-            ( 50,     50,     30, -1200,     150,   730, -math.pi / 2),
+            ( 50,      50,     30, -1200,     150,  -730, -math.pi / 2),
+            ( 50,      50,     30, -1200,     150,   730, -math.pi / 2),
 
-            ( 50,     50,     30,  1200,     150,  -730, -math.pi / 2),
-            ( 50,     50,     30,  1200,     150,   730, -math.pi / 2),
+            ( 50,      50,     30,  1200,     150,  -730, -math.pi / 2),
+            ( 50,      50,     30,  1200,     150,   730, -math.pi / 2),
 
-            ( 50,     50,     30,  -730,     150,  1200,            0),
-            ( 50,     50,     30,   730,     150,  1200,            0),
+            ( 50,      50,     30,  -730,     150,  1200,            0),
+            ( 50,      50,     30,   730,     150,  1200,            0),
         )
 
         self.spawn_points = (
             #    x,     y,               r
             #(    0,  1650,         math.pi),
             #(    0, -1650,               0),
-            ( -935,   935, 3 * math.pi / 4),
-            (  935,   935, 5 * math.pi / 4),
-            (  935,  -935, 7 * math.pi / 4),
-            ( -935,  -935,     math.pi / 4),
-            (-1650,  1650, 3 * math.pi / 4),
+            ( -935,   935, 3 * math.pi / 4, 0x7777AA),
+            (  935,   935, 5 * math.pi / 4, 0x770000),
+            (  935,  -935, 7 * math.pi / 4, 0x007700),
+            ( -935,  -935,     math.pi / 4, 0x777700),
+            (-1650,  1650, 3 * math.pi / 4, 0xAA00AA),
             #(-1650,     0,     math.pi / 2),
             #( 1650,     0, 3 * math.pi / 2),
-            ( 1650,  1650, 5 * math.pi / 4),
-            ( 1650, -1650, 7 * math.pi / 4),
-            (-1650, -1650,     math.pi / 4),
+            ( 1650,  1650, 5 * math.pi / 4, 0x007777),
+            ( 1650, -1650, 7 * math.pi / 4, 0x000077),
+            (-1650, -1650,     math.pi / 4, 0xFFAA77),
+
         )
 
         self.arena = "arena{}".format(uwsgi.worker_id())
@@ -321,9 +322,6 @@ class Arena(object):
         bm_counter = 0
         while not self.finished:
             gevent.sleep(10.0)
-            if self.finished:
-                break
-            gevent.sleep(10.0)
             if len(self.bonus_malus_spawn_points) > 0:
                 coordinates = self.bonus_malus_spawn_points.pop(randrange(len(self.bonus_malus_spawn_points)))
                 choice(self.bonus_malus)(self, bm_counter, *(coordinates))
@@ -361,7 +359,7 @@ class Arena(object):
 
 class Player(object):
 
-    def __init__(self, game, name, avatar, fd, x, y, r, speed=15):
+    def __init__(self, game, name, avatar, fd, x, y, r, color, speed=15):
         self.game = game
         self.name = name
         self.avatar = avatar
@@ -381,6 +379,7 @@ class Player(object):
         self.cmd = None
         self.attack_cmd = None
         self.bullet = Bullet(self.game, self)
+        self.color = color
 
         # check if self.energy is 0, in such a case
         # trigger the kill procedure removing the player from the list
@@ -403,7 +402,7 @@ class Player(object):
         self.redis.publish(self.arena, msg)
 
     def update_gfx(self):
-        msg = "{}:{},{},{},{},{},{},{},{}".format(
+        msg = "{}:{},{},{},{},{},{},{},{},{}".format(
             self.name,
             self.arena_object.r,
             self.arena_object.x,
@@ -412,7 +411,8 @@ class Player(object):
             self.attack,
             self.energy,
             self.avatar,
-            self.arena_object.scale
+            self.arena_object.scale,
+            self.color
         )
         self.send_all(msg)
 

@@ -25,9 +25,9 @@ var objects = [
     {texture: 'ROBO_02_TEXTURE.jpg', object: 'ROBO_02_OK.obj', ref: null},
     {texture: 'missile_texture.jpg', object: 'missile.obj'   , ref: null},
     {texture: 'muro_texture.jpg'   , object: 'muro.obj'      , ref: null},
-    {texture: null                 , object: 'power.obj'     , ref: null},
-    {texture: null                 , object: 'heal.obj'      , ref: null},
-    {texture: null                 , object: 'haste.obj'     , ref: null},
+    {texture: null                 , object: 'power.obj'     , ref: null, color:0xFF0000},
+    {texture: null                 , object: 'heal.obj'      , ref: null, color:0x00FF00},
+    {texture: null                 , object: 'haste.obj'     , ref: null, color:0x0000FF},
 ];
 
 var avatars = document.getElementsByClassName('choose_player');
@@ -137,7 +137,7 @@ function ws_recv(e) {
     var args = cmd.split(',');
     if (player == undefined) {
         // (name, avatar, x, y, z, r, scale)
-        add_player(items[0], args[6], args[1], args[2], args[3], args[0], args[7]);
+        add_player(items[0], args[6], args[1], args[2], args[3], args[0], args[7], args[8]);
         player = players[items[0]];
     }
     player.ws['r'] = args[0];
@@ -418,7 +418,7 @@ function update() {
 
 }
 
-function add_player(name, avatar, x, y, z, r, scale) {
+function add_player(name, avatar, x, y, z, r, scale, color) {
     // console.log('add_player');
     if (avatar == '1'){
         players[name] = objects[0].ref.clone();
@@ -427,7 +427,7 @@ function add_player(name, avatar, x, y, z, r, scale) {
         players[name] = objects[1].ref.clone();
     }
     players[name].children[0].material = players[name].children[0].material.clone()
-    players[name].children[0].material.color.setHex(Math.random() * 0xffffff);
+    players[name].children[0].material.color.setHex(parseInt(color));
     players[name].name = name;
     players[name].scale.set(scale, scale, scale);
     players[name].energy = 100.0;
@@ -588,23 +588,32 @@ function loadObjects3d(objects3d, index, manager){
         return;
     }
 
-    var texture = new THREE.Texture();
+    var texture = undefined;
+
     if (objects3d[index].texture != null){
+        texture = new THREE.Texture();
+
         var image_loader = new THREE.ImageLoader(manager);
         image_loader.load(objects3d[index].texture, function (image) {
             texture.image = image;
             texture.needsUpdate = true;
         });
     }
+    
     var obj_loader = new THREE.OBJLoader(manager);
     obj_loader.load(objects3d[index].object, function (object){
         object.traverse(function (child) {
             if (child instanceof THREE.Mesh) {
-                child.material.map = texture;
+                if (texture) {
+                    child.material.map = texture;
+                }
+                else {
+                    child.material.color.setHex(objects3d[index].color);
+                }
             }
         });
         object.children[0].geometry.computeFaceNormals();
-        var  geometry = object.children[0].geometry;
+        var geometry = object.children[0].geometry;
         THREE.GeometryUtils.center(geometry);
 
         objects3d[index].ref = object;
