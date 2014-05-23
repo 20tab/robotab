@@ -1,4 +1,4 @@
-from random import choice
+from random import choice, randrange
 
 import uwsgi
 import gevent
@@ -36,6 +36,63 @@ class ArenaObject(object):
     def collide(self, x, y, width, height):
         return (abs(self.x - x) * 2 < (self.width * self.scale + width)) and\
             (abs(self.y - y) * 2 < (self.height * self.scale + height))
+
+
+class Bonus(object):
+
+    def __init__(self, game, id, x, y, type):
+        self.game = game
+        self.id = id
+        self.type = type
+        self.arena_object = ArenaObject(x, y, 0, 0)
+        self.game.active_bonus_malus.append(self)
+        self.game.broadcast('bm,{},{},{},{},{}'.format(self.id, self.type, self.arena_object.x, 50, self.arena_object.y))
+
+    def activate_bonus(self):
+        self.game.active_bonus_malus.remove(self)
+        self.game.broadcast('bm,{},rm'.format(self.id))
+        self.game.bonus_malus_spawn_points.append((self.arena_object.x, self.arena_object.y))
+
+
+class TimerBonus(Bonus):
+    def __init__(self, game, id, x, y, type, time=15):
+        super(TimerBonus, self).__init__(game, id, x, y, type)
+        self.time = time
+
+
+class BonusHaste(TimerBonus):
+    def __init__(self, game, id, x, y, type='haste'):
+        super(BonusHaste, self).__init__(game, id, x, y, type)
+
+    def activate_bonus(self, player):
+        super(BonusHaste, self).activate_bonus()
+        old_speed = player.arena_object.speed
+        player.arena_object.speed *= 2
+        gevent.sleep(self.time)
+        player.arena_object.speed = old_speed
+
+
+class BonusPower(TimerBonus):
+    def __init__(self, game, id, x, y, type='power'):
+        super(BonusPower, self).__init__(game, id, x, y, type)
+
+    def activate_bonus(self, player):
+        super(BonusPower, self).activate_bonus()
+        old_damage = player.bullet.damage
+        player.bullet.damage *= 2
+        gevent.sleep(self.time)
+        player.bullet.damage = old_damage
+
+
+class BonusHeal(Bonus):
+
+    def __init__(self, game, id, x, y, type='heal', amount=50.0):
+        super(BonusHeal, self).__init__(game, id, x, y, type)
+        self.amount = amount
+
+    def activate_bonus(self, player):
+        super(BonusHeal, self).activate_bonus()
+        player.energy = player.energy + self.amount if player.energy <= 50 else 100.0
 
 
 class Arena(object):
@@ -97,7 +154,23 @@ class Arena(object):
         self.channel = self.redis.pubsub()
         self.channel.subscribe(self.arena)
 
-        self.bonus_malus_queue = ['haste', 'giant', 'heal', 'power']
+        self.bonus_malus = (
+            BonusHaste,
+            # BonusGiant,
+            BonusPower,
+            BonusHeal,
+        )
+
+        self.bonus_malus_spawn_points = [
+            (    0,     0),
+            (    0,  1650),
+            (    0, -1650),
+            (-1650,     0),
+            ( 1650,     0),
+        ]
+
+        self.active_bonus_malus = []
+
         self.spawn_iterator = iter(self.spawn_points)
 
     def broadcast(self, msg):
@@ -170,7 +243,7 @@ class Arena(object):
                         self.players[p].damage(0.1, player.name)
                 elif self.players[p]. attack == 1:
                     player.damage(1.0, 'himself')
-                self.broadcast("bm,collision between {} and {}".format(player.name, p))
+                self.broadcast("collision between {} and {}".format(player.name, p))
                 return True
         for wall in self.walls:
             if wall[6] == 0:
@@ -181,6 +254,14 @@ class Arena(object):
                 width = 1 * wall[2]
             if player.arena_object.collide(wall[3], wall[5], width, height):
                 return True
+        for bm in self.active_bonus_malus:
+            if player.arena_object.collide(
+                bm.arena_object.x,
+                bm.arena_object.y,
+                bm.arena_object.width * bm.arena_object.scale,
+                bm.arena_object.height * bm.arena_object.scale,
+            ):
+                gevent.spawn(bm.activate_bonus, player)
         return False
 
     def engine_start(self):
@@ -237,11 +318,16 @@ class Arena(object):
         # with a random list of bonus/malus items to drop on the arena
         # it is consumed every 10 seconds
         # consume bonus_malus_queue
+        bm_counter = 0
         while not self.finished:
             gevent.sleep(10.0)
-            self.broadcast("bm,{}".format(choice(self.bonus_malus_queue)))
-            self.broadcast("bm,{}".format(choice(self.bonus_malus_queue)))
-            self.broadcast("bm,{}".format(choice(self.bonus_malus_queue)))
+            if self.finished:
+                break
+            gevent.sleep(10.0)
+            if len(self.bonus_malus_spawn_points) > 0:
+                coordinates = self.bonus_malus_spawn_points.pop(randrange(len(self.bonus_malus_spawn_points)))
+                choice(self.bonus_malus)(self, bm_counter, *(coordinates))
+                bm_counter += 1
         gevent.sleep(1.0)
         self.broadcast("end")
         self.started = False

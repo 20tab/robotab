@@ -18,12 +18,16 @@ var players = {};
 var walls = [];
 var invisible_walls = [];
 var posters = [];
+var bonus_malus = {};
 
 var objects = [
     {texture: 'ROBO_01_TEXTURE.jpg', object: 'ROBO_01_OK.obj', ref: null},
     {texture: 'ROBO_02_TEXTURE.jpg', object: 'ROBO_02_OK.obj', ref: null},
     {texture: 'missile_texture.jpg', object: 'missile.obj'   , ref: null},
     {texture: 'muro_texture.jpg'   , object: 'muro.obj'      , ref: null},
+    {texture: null                 , object: 'power.obj'     , ref: null},
+    {texture: null                 , object: 'heal.obj'      , ref: null},
+    {texture: null                 , object: 'haste.obj'     , ref: null},
 ];
 
 var avatars = document.getElementsByClassName('choose_player');
@@ -49,7 +53,18 @@ function ws_recv(e) {
     // console.log(e.data);
     var items = e.data.split(':');
     if (items[0] == 'arena') {
-        hud.innerHTML = '#' + items[1];
+        var args = items[1].split(',');
+        if (args[0] == 'bm'){
+            if(args[2] == 'rm'){
+                remove_bonus_malus(args[1]);
+            }
+            else{
+                add_bonus_malus(args[1], args[2], args[3], args[4], args[5]);
+            }
+        }
+        else{
+            hud.innerHTML = '#' + items[1];
+        }
         return;
     }
     if (items[0] == '!') {
@@ -290,7 +305,7 @@ function update() {
         }
 
         if (keyboard.pressed("space")){
-            ws.send(me+":AT");
+            ws.send(me + ":AT");
         }
 /*
          else if (players[me] && players[me].ws['a']){
@@ -298,55 +313,60 @@ function update() {
          }
 */
 
-	var is_moving = false;
+	    var is_moving = false;
 
         if (keyboard.pressed("right")){
             ws.send(me + ":rr");
             rotating = true;
-		is_moving = true;
+		    is_moving = true;
         }
         else if (keyboard.pressed("left")){
             ws.send(me + ":rl");
             rotating = true;
-		is_moving = true;
+		    is_moving = true;
         }
 
 
         if (!rotating && keyboard.pressed("up")){
             ws.send(me + ":fw");
-		is_moving = true;
+		    is_moving = true;
         }
 
         if (!rotating && keyboard.pressed("down")){
             ws.send(me + ":bw");
-		is_moving = true;
+		    is_moving = true;
         }
 
-	if (is_moving) {
-		if (document.getElementById('move').paused) {
-			document.getElementById('move').play();
-		}
-	}
-	else {
-		if (!document.getElementById('move').paused) {
-			document.getElementById('move').pause();
-			document.getElementById('move').currentTime = 0;
-		}
-	}
+    	if (is_moving) {
+    		if (document.getElementById('move').paused) {
+    			document.getElementById('move').play();
+    		}
+    	}
+    	else {
+    		if (!document.getElementById('move').paused) {
+    			document.getElementById('move').pause();
+    			document.getElementById('move').currentTime = 0;
+    		}
+    	}
     }
+
+    Object.keys(bonus_malus).forEach(function(key){
+        var bm = bonus_malus[key];
+        bm.rotation.y += 0.1;
+    });
 
     Object.keys(players).forEach(function(key){
         var player = players[key];
         if (player.bullet.dirty == true) {
             if (document.getElementById('fire').paused) {
-		//document.getElementById('fire').pause();
-		document.getElementById('fire').currentTime = 0;
-		document.getElementById('fire').play();
+        		//document.getElementById('fire').pause();
+        		document.getElementById('fire').currentTime = 0;
+        		document.getElementById('fire').play();
             }
             player.bullet.dirty = false;
             if (player.bullet.ws['R'] <= 0) {
                 player.bullet.children[0].visible = false;
-		document.getElementById('fire').pause();
+		        document.getElementById('fire').pause();
                 return;
             }
             player.bullet.children[0].visible = true;
@@ -416,9 +436,11 @@ function add_player(name, avatar, x, y, z, r, scale) {
     //players[name].receiveShadow = true;
 
     var bullet = objects[2].ref.clone();
+
     bullet.scale.set(scale, scale, scale);
     bullet.children[0].visible = false;
-
+    bullet.children[0].quaternion = players[name].quaternion;
+    bullet.children[0].rotation = players[name].rotation;
     scene.add(bullet);
     bullet.ws = {};
     players[name].bullet = bullet;
@@ -465,6 +487,30 @@ function remove_player(player){
     delete players[player.name];
 }
 
+function add_bonus_malus(id, bm_type, x, y, z){
+    if (bm_type == 'power') {
+        bonus_malus[id] = objects[4].ref.clone();
+    }
+    else if (bm_type == 'heal') {
+        bonus_malus[id] = objects[5].ref.clone();
+    }
+    else if (bm_type == 'haste') {
+        bonus_malus[id] = objects[6].ref.clone();
+    }
+    else {
+        return;
+    }
+    bonus_malus[id].children[0].material = bonus_malus[id].children[0].material.clone();
+    bonus_malus[id].scale.set(7, 7, 7);
+    bonus_malus[id].position.set(x, y, z);
+    scene.add(bonus_malus[id]);
+}
+
+function remove_bonus_malus(id){
+    scene.remove(bonus_malus[id]);
+    delete bonus_malus[id];
+}
+
 function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
     var muro = objects[3].ref.clone();
     muro.children[0].material = muro.children[0].material.clone();
@@ -508,7 +554,6 @@ function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
         poster.position.y += 50;
         //console.log(poster);
         scene.add(poster);
-
     }
     //muro.receiveShadow = true;
     //muro.castShadow = true;
@@ -544,12 +589,13 @@ function loadObjects3d(objects3d, index, manager){
     }
 
     var texture = new THREE.Texture();
-    var image_loader = new THREE.ImageLoader(manager);
-    image_loader.load(objects3d[index].texture, function (image) {
-        texture.image = image;
-        texture.needsUpdate = true;
-    });
-
+    if (objects3d[index].texture != null){
+        var image_loader = new THREE.ImageLoader(manager);
+        image_loader.load(objects3d[index].texture, function (image) {
+            texture.image = image;
+            texture.needsUpdate = true;
+        });
+    }
     var obj_loader = new THREE.OBJLoader(manager);
     obj_loader.load(objects3d[index].object, function (object){
         object.traverse(function (child) {
