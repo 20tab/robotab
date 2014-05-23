@@ -48,9 +48,9 @@ class Bonus(object):
         self.game.active_bonus_malus.append(self)
         self.game.broadcast('bm,{},{},{},{},{}'.format(self.id, self.type, self.arena_object.x, 50, self.arena_object.y))
 
-    def activate_bonus(self):
+    def activate_bonus(self, player):
         self.game.active_bonus_malus.remove(self)
-        self.game.broadcast('bm,{},rm'.format(self.id))
+        self.game.broadcast('bm,gv,{},{},{}'.format(self.id, self.type, player.name))
         self.game.bonus_malus_spawn_points.append((self.arena_object.x, self.arena_object.y))
 
 
@@ -65,11 +65,12 @@ class BonusHaste(TimerBonus):
         super(BonusHaste, self).__init__(game, id, x, y, type)
 
     def activate_bonus(self, player):
-        super(BonusHaste, self).activate_bonus()
+        super(BonusHaste, self).activate_bonus(player)
         old_speed = player.arena_object.speed
         player.arena_object.speed *= 2
         gevent.sleep(self.time)
         player.arena_object.speed = old_speed
+        self.game.broadcast('bm,rm,{},{}'.format(self.type, player.name))
 
 
 class BonusPower(TimerBonus):
@@ -77,11 +78,12 @@ class BonusPower(TimerBonus):
         super(BonusPower, self).__init__(game, id, x, y, type)
 
     def activate_bonus(self, player):
-        super(BonusPower, self).activate_bonus()
+        super(BonusPower, self).activate_bonus(player)
         old_damage = player.bullet.damage
         player.bullet.damage *= 2
         gevent.sleep(self.time)
         player.bullet.damage = old_damage
+        self.game.broadcast('bm,{},rm,{}'.format(self.type, player.name))
 
 
 class BonusHeal(Bonus):
@@ -91,7 +93,7 @@ class BonusHeal(Bonus):
         self.amount = amount
 
     def activate_bonus(self, player):
-        super(BonusHeal, self).activate_bonus()
+        super(BonusHeal, self).activate_bonus(player)
         player.energy = player.energy + self.amount if player.energy <= 50 else 100.0
 
 
@@ -269,10 +271,7 @@ class Arena(object):
         del self.greenlets['engine']
         print('engine started')
         while True:
-            if len(self.players) == 0 and self.started:
-                self.finished = True
-                break
-            if len(self.players) == 1 and self.started:
+            if len(self.players) <= 1 and self.started:
                 self.finished = True
                 self.winning_logic()
                 break
@@ -478,6 +477,7 @@ class Bullet(object):
                 self.game.players[p].arena_object.width * self.game.players[p].arena_object.scale,
                 self.game.players[p].arena_object.height * self.game.players[p].arena_object.scale,
             ):
+
                 if self.game.started:
                     self.game.players[p].damage(self.damage, self.player.name)
                 return True
@@ -511,13 +511,16 @@ class Robotab(Arena):
             player = Player(self, username, avatar, uwsgi.connection_fd(), *robot_coordinates)
 
             if self.started or len(self.players) > self.max_players or len(self.waiting_players) > 0:
-                self.broadcast("hey {}, game already started or is full, wait for next one...".format(player.name))
                 self.waiting_players.append(player)
+                uwsgi.websocket_send("arena:hey {}, game already started or is full, wait for next one...".format(player.name))
                 player.wait_for_game()
             else:
                 self.players[player.name] = player
 
             self.spawn_greenlets()
+
+            for p in self.players.keys():
+                self.players[p].update_gfx()
 
             while True:
                 ready = gevent.select.select([player.fd, player.redis_fd], [], [], timeout=4.0)
@@ -532,7 +535,8 @@ class Robotab(Arena):
                         except IOError:
                             import sys
                             print sys.exc_info()
-                            player.end('leaver')
+                            if player.name in self.players:
+                                player.end('leaver')
                             return [""]
                         if msg and not self.finished:
                             self.msg_handler(player, msg)

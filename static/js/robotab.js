@@ -55,8 +55,14 @@ function ws_recv(e) {
     if (items[0] == 'arena') {
         var args = items[1].split(',');
         if (args[0] == 'bm'){
-            if(args[2] == 'rm'){
-                remove_bonus_malus(args[1]);
+            if(args[1] == 'gv'){
+                if(args[3] != 'heal'){
+                    players[args[4]].bonus += " " + args[3];
+                }
+                remove_bonus_malus(args[2]);
+            }
+            else if(args[1] == 'rm'){
+                players[args[3]].bonus.replace( " " + args[2], "");
             }
             else{
                 add_bonus_malus(args[1], args[2], args[3], args[4], args[5]);
@@ -374,7 +380,6 @@ function update() {
             player.bullet.position.x = player.bullet.ws['x'];
             player.bullet.position.y = player.bullet.ws['y'];
             player.bullet.position.z = player.bullet.ws['z'];
-            //console.log(player.bullet.ws['R']);
         }
 
         if (player.dirty) {
@@ -432,6 +437,7 @@ function add_player(name, avatar, x, y, z, r, scale, color) {
     players[name].scale.set(scale, scale, scale);
     players[name].energy = 100.0;
     players[name].name_and_energy = name + ': 100.0';
+    players[name].bonus = '';
     //players[name].castShadow = true;
     //players[name].receiveShadow = true;
 
@@ -449,7 +455,7 @@ function add_player(name, avatar, x, y, z, r, scale, color) {
 
     var player_hud = document.createElement('div');
     player_hud.id = 'player_' + name;
-    player_hud.setAttribute('style', "position:absolute;left:800px;top:" + hud_pos + "px");
+    player_hud.setAttribute('style', "color:#" + color + ";position:absolute;left:800px;top:" + hud_pos + "px");
     hud_pos += 20;
 
     document.getElementsByTagName('body')[0].appendChild(player_hud);
@@ -570,7 +576,7 @@ function draw_huds() {
 
 function draw_hud_div(player) {
     // console.log('draw_hud_div');
-    player.hud.innerHTML = player.name_and_energy;
+    player.hud.innerHTML = player.name_and_energy + '|' + player.bonus;
 }
 
 function go_fullscreen() {
