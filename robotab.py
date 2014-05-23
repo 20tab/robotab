@@ -241,7 +241,7 @@ class Arena(object):
                     if self.players[p].attack == 0:
                         self.players[p].damage(1.0, player.name)
                     else:
-                        self.players[p].damage(0.1, player.name)
+                        self.players[p].damage(1.0, player.name)
                 elif self.players[p]. attack == 1:
                     player.damage(1.0, 'himself')
                 self.broadcast("collision between {} and {}".format(player.name, p))
@@ -445,7 +445,8 @@ class Bullet(object):
         self.arena_object.y = self.player.arena_object.y
         self.arena_object.r = self.player.arena_object.r
         self.is_shooting = self._range
-        self.player.damage(0.1, 'himself')
+        if (self.game.started):
+            self.player.damage(1.0, 'himself')
         self.game.animations.append(self)
 
     def animate(self):
@@ -510,7 +511,7 @@ class Robotab(Arena):
             player = Player(self, username, avatar, uwsgi.connection_fd(), *robot_coordinates)
 
             if self.started or len(self.players) > self.max_players or len(self.waiting_players) > 0:
-                print("hey {}, game already started or is full, wait for next one...".format(player.name))
+                self.broadcast("hey {}, game already started or is full, wait for next one...".format(player.name))
                 self.waiting_players.append(player)
                 player.wait_for_game()
             else:
