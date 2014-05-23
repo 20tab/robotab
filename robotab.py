@@ -97,9 +97,9 @@ class BonusHeal(Bonus):
 
 class Arena(object):
 
-    def __init__(self, min_players=2, max_players=8, warmup=1):
+    def __init__(self, min_players=2, max_players=8, warmup=10):
         self.greenlets = {
-            #'engine': self.engine_start,
+            'engine': self.engine_start,
             'start': self.start
         }
 
@@ -266,13 +266,13 @@ class Arena(object):
         return False
 
     def engine_start(self):
-        #del self.greenlets['engine']
+        del self.greenlets['engine']
         print('engine started')
         while True:
-            if len(self.players) == 0:
+            if len(self.players) == 0 and self.started:
                 self.finished = True
                 break
-            if len(self.players) == 1:
+            if len(self.players) == 1 and self.started:
                 self.finished = True
                 self.winning_logic()
                 break
@@ -296,12 +296,18 @@ class Arena(object):
             delta = t1 - t
             if delta < 33.33:
                 gevent.sleep((33.33 - delta) / 1000.0)
-        #self.greenlets['engine'] = self.engine_start
+        self.greenlets['engine'] = self.engine_start
         print("engine ended")
 
     def start(self):
         del self.greenlets['start']
+        print("START!!")
         #self.warming_up = True
+        for p in self.players.keys():
+            self.players[p].update_gfx()
+        while len(self.players) < self.min_players:
+            gevent.sleep(1)
+
         warmup = self.warmup
         for p in self.players.keys():
             self.players[p].update_gfx()
@@ -311,8 +317,8 @@ class Arena(object):
             warmup -= 1
         #self.warmup = False
         self.started = True
-        gevent.spawn(self.engine_start)
-        #gevent.sleep()
+        #gevent.spawn(self.engine_start)
+        gevent.sleep()
         self.broadcast("FIGHT!!!")
         gevent.sleep()
         # this queue is initialized on game startup
@@ -334,7 +340,8 @@ class Arena(object):
 
     def spawn_greenlets(self):
         for greenlet in self.greenlets:
-            if len(self.players) >= self.min_players:
+            #if len(self.players) >= self.min_players:
+            if len(self.players) >= 1:
                 gevent.spawn(self.greenlets[greenlet])
 
     # place up to 8 waiting_players
@@ -470,7 +477,8 @@ class Bullet(object):
                 self.game.players[p].arena_object.width * self.game.players[p].arena_object.scale,
                 self.game.players[p].arena_object.height * self.game.players[p].arena_object.scale,
             ):
-                self.game.players[p].damage(self.damage, self.player.name)
+                if self.game.started:
+                    self.game.players[p].damage(self.damage, self.player.name)
                 return True
 
         for wall in self.game.walls:

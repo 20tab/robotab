@@ -257,7 +257,7 @@ var clock = new THREE.Clock();
 function animate()
 {
     setTimeout( function() {
-    requestAnimationFrame( animate );
+        requestAnimationFrame( animate );
     }, 1000 / 30 );
     render();
     update();
