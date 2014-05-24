@@ -107,7 +107,7 @@ class BonusHeal(Bonus):
 
 class Arena(object):
 
-    def __init__(self, min_players=2, max_players=8, warmup=10):
+    def __init__(self, min_players=3, max_players=8, warmup=10):
         self.greenlets = {
             'engine': self.engine_start,
             'start': self.start
@@ -279,9 +279,14 @@ class Arena(object):
         del self.greenlets['engine']
         print('engine started')
         while True:
-            if len(self.players) <= 1 and self.started:
-                self.finished = True
+            if (len(self.players) == 1 and self.started):
                 self.winning_logic()
+                self.finished = True
+                self.restart_game()
+                break
+            elif (len(self.players) == 0):
+                self.finished = True
+                self.restart_game()
                 break
             t = uwsgi.micros() / 1000.0
             for p in self.players.keys():
@@ -358,6 +363,8 @@ class Arena(object):
     def winning_logic(self):
         winner_name = self.players.keys()[0]
         self.players[winner_name].end('winner')
+    
+    def restart_game(self):
         countdown = 10
         while countdown > 0:
             self.broadcast('next game will start in {} seconds'.format(countdown))
