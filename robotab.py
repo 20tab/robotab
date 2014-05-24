@@ -280,8 +280,8 @@ class Arena(object):
         print('engine started')
         while True:
             if (len(self.players) == 1 and self.started):
-                self.winning_logic()
                 self.finished = True
+                self.winning_logic()
                 self.restart_game()
                 break
             elif (len(self.players) == 0):
@@ -407,6 +407,8 @@ class Player(object):
         # trigger the kill procedure removing the player from the list
         # if after the death a single player remains, trigger the winning procedure
     def damage(self, amount, attacker):
+        if not self.game.started:
+            return
         self.energy -= amount
         if self.energy <= 0:
             self.game.broadcast(
@@ -460,8 +462,7 @@ class Bullet(object):
         self.arena_object.y = self.player.arena_object.y
         self.arena_object.r = self.player.arena_object.r
         self.is_shooting = self._range
-        if (self.game.started):
-            self.player.damage(1.0, 'himself')
+        self.player.damage(1.0, 'himself')
         self.game.animations.append(self)
 
     def animate(self):
@@ -493,8 +494,7 @@ class Bullet(object):
                 self.game.players[p].arena_object.height * self.game.players[p].arena_object.scale,
             ):
 
-                if self.game.started:
-                    self.game.players[p].damage(self.damage, self.player.name)
+                self.game.players[p].damage(self.damage, self.player.name)
                 return True
 
         for wall in self.game.walls:
