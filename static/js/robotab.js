@@ -96,6 +96,11 @@ function ws_recv(e) {
         if (args[0] == 'winner'){
             players[args[1]].name_and_energy = players[args[1]].name + ': Winner';
             draw_hud_div(players[args[1]]);
+            var huds = document.getElementsByClassName('players_energy');
+            while(huds.length > 0){
+                huds[0].parentNode.removeChild(huds[0]);
+            }
+            hud_pos = 0;
         }
         else if (args[0] == 'loser'){
             players[args[1]].name_and_energy = players[args[1]].name + ': Dead';
@@ -463,6 +468,7 @@ function add_player(name, avatar, x, y, z, r, scale, color) {
     var player_hud = document.createElement('div');
     player_hud.id = 'player_' + name;
     player_hud.setAttribute('style', "color:#" + color + ";position:absolute;left:800px;top:" + hud_pos + "px");
+    player_hud.className = 'players_energy';
     hud_pos += 20;
 
     document.getElementsByTagName('body')[0].appendChild(player_hud);
@@ -635,7 +641,7 @@ function loadObjects3d(objects3d, index, manager){
 }
 
 function start_websocket(){
-    ws = new WebSocket('ws://${HTTP_HOST}/robotab');
+    ws = new WebSocket('ws://127.0.0.1:8080/robotab');
     ws.onopen = start_the_world;
     ws.onmessage = ws_recv;
     ws.oncolose = function() {
