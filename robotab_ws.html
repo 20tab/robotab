@@ -1,0 +1,33 @@
+<html>
+<head>
+    <title>Robotab on ${HTTP_HOST}</title>
+    <link href="static/css/base.css" rel="stylesheet" />
+</head>
+<body>
+<audio id="ready1" src="ready-1.mp3"></audio>
+<audio id="ready2" src="ready-2.mp3"></audio>
+<audio id="move" src="move-loop.mp3" loop></audio>
+<audio id="fire" src="fire.mp3"></audio>
+<script src="static/js/three.min.js"></script>
+<script src="static/js/OBJLoader.js"></script>
+<script src="static/js/THREEx.FullScreen.js"></script>
+<script src="static/js/THREEx.KeyboardState.js"></script>
+
+
+<div id="background">
+    <div id="select_player" class="start_game">
+        <div id="username_div">USERNAME<br/><input type="text" name="username_input" id="username_input"/></div>
+        <img id="robot_one" data-avatar="1" class="choose_player" alt="robot_one" title="robot_one" src="robo01.png" />
+        <img alt="logo 20tab" id="logo_twentytab" src="/static/image/logo.svg">
+        <img id="robot_two" data-avatar="2" class="choose_player" alt="robot_two" title="robot_two" src="robo02.png" />
+    </div>
+</div>
+    <div id="ThreeJS">
+    </div>
+<div id="hud"># waiting for players...</div>
+
+
+<script src="/robotab.js"></script>
+
+</body>
+</html>
