@@ -91,7 +91,7 @@ class BonusPower(TimerBonus):
         player.bullet.damage *= 2
         gevent.sleep(self.time)
         player.bullet.damage = old_damage
-        self.game.broadcast('bm,{},rm,{}'.format(self.type, player.name))
+        self.game.broadcast('bm,rm,{},{}'.format(self.type, player.name))
 
 
 class BonusHeal(Bonus):
@@ -310,14 +310,15 @@ class Arena(object):
         del self.greenlets['start']
         print("START!!")
         #self.warming_up = True
-        for p in self.players.keys():
-            self.players[p].update_gfx()
+        
         while len(self.players) < self.min_players:
+            for p in self.players.keys():
+                self.players[p].update_gfx()
             gevent.sleep(1)
 
         warmup = self.warmup
-        for p in self.players.keys():
-            self.players[p].update_gfx()
+        #for p in self.players.keys():
+        #    self.players[p].update_gfx()
         while warmup > 0:
             gevent.sleep(1.0)
             self.broadcast("warmup,{} seconds to start".format(warmup))
@@ -470,7 +471,6 @@ class Bullet(object):
             self.arena_object.y,
             self.is_shooting
         )
-
         self.player.send_all(msg)
         if self.is_shooting <= 0:
             self.game.animations.remove(self)

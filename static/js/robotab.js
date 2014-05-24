@@ -62,7 +62,7 @@ function ws_recv(e) {
                 remove_bonus_malus(args[2]);
             }
             else if(args[1] == 'rm'){
-                players[args[3]].bonus.replace( " " + args[2], "");
+                players[args[3]].bonus = players[args[3]].bonus.replace(" " + args[2], "");
             }
             else{
                 add_bonus_malus(args[1], args[2], args[3], args[4], args[5]);
@@ -583,7 +583,7 @@ function draw_huds() {
 
 function draw_hud_div(player) {
     // console.log('draw_hud_div');
-    player.hud.innerHTML = player.name_and_energy + '|' + player.bonus;
+    player.hud.innerHTML = player.name_and_energy + ' | ' + player.bonus;
 }
 
 function go_fullscreen() {
