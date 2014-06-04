@@ -315,11 +315,16 @@ class Arena(object):
         del self.greenlets['start']
         print("START!!")
         #self.warming_up = True
-        
+
         while len(self.players) < self.min_players:
             for p in self.players.keys():
                 self.players[p].update_gfx()
             gevent.sleep(1)
+            if self.finished:
+                self.started = False
+                self.greenlets['start'] = self.start
+                print("ending")
+                return
 
         warmup = self.warmup
         #for p in self.players.keys():
@@ -349,6 +354,7 @@ class Arena(object):
         self.broadcast("end")
         self.started = False
         self.greenlets['start'] = self.start
+        print("end")
         gevent.sleep()
 
     def spawn_greenlets(self):
@@ -363,9 +369,9 @@ class Arena(object):
     def winning_logic(self):
         winner_name = self.players.keys()[0]
         self.players[winner_name].end('winner')
-    
+
     def restart_game(self):
-        countdown = 10
+        countdown = 15
         while countdown > 0:
             self.broadcast('next game will start in {} seconds'.format(countdown))
             gevent.sleep(1)
@@ -443,6 +449,14 @@ class Player(object):
     def wait_for_game(self):
         while self.game.started or self.game.finished or self.name not in self.game.players:
             gevent.sleep(1)
+            try:
+                uwsgi.websocket_recv_nb()
+            except IOError:
+                import sys
+                print sys.exc_info()
+                if self.name in self.players:
+                    self.end('leaver')
+                return [""]
 
 
 class Bullet(object):
@@ -513,13 +527,12 @@ class Robotab(Arena):
 
     def __call__(self, e, sr):
         if e['PATH_INFO'] == '/':
-            sr('200 OK',[('Content-Type','text/html')])
+            sr('200 OK', [('Content-Type', 'text/html')])
             return [open('robotab_ws.html').read()]
 
         if e['PATH_INFO'] == '/robotab.js':
-            sr('200 OK',[('Content-Type','application/javascript')])
+            sr('200 OK', [('Content-Type', 'application/javascript')])
             return [open('static/js/robotab.js').read()]
-
 
         if e['PATH_INFO'] == '/robotab':
             uwsgi.websocket_handshake()
@@ -534,10 +547,12 @@ class Robotab(Arena):
             uwsgi.websocket_send('walls:{}'.format(str(self.walls).replace('),', ';').translate(None, "()")))
             player = Player(self, username, avatar, uwsgi.connection_fd(), *robot_coordinates)
 
-            if self.started or len(self.players) > self.max_players or len(self.waiting_players) > 0:
+            if self.started or self.finished or len(self.players) > self.max_players or len(self.waiting_players) > 0:
+                print('{}:{}:{}:{}'.format(self.started, self.finished, len(self.players) > self.max_players, len(self.waiting_players) > 0))
                 self.waiting_players.append(player)
-                uwsgi.websocket_send("arena:hey {}, game already started or is full, wait for next one...".format(player.name))
+                uwsgi.websocket_send("arena:hey {}, wait for next game".format(player.name))
                 player.wait_for_game()
+                self.waiting_players.remove(player)
             else:
                 self.players[player.name] = player
 
