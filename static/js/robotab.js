@@ -21,13 +21,13 @@ var posters = [];
 var bonus_malus = {};
 
 var objects = [
-    {texture: 'ROBO_01_TEXTURE.jpg', object: 'ROBO_01_OK.obj', ref: null},
-    {texture: 'ROBO_02_TEXTURE.jpg', object: 'ROBO_02_OK.obj', ref: null},
-    {texture: 'missile_texture.jpg', object: 'missile.obj'   , ref: null},
-    {texture: 'muro_texture.jpg'   , object: 'muro.obj'      , ref: null},
-    {texture: null                 , object: 'power.obj'     , ref: null, color:0xFF0000},
-    {texture: null                 , object: 'heal.obj'      , ref: null, color:0x00FF00},
-    {texture: null                 , object: 'haste.obj'     , ref: null, color:0x0000FF},
+    {texture: 'ROBO_01_TEXTURE.jpg', object: 'ROBO_01_OK.obj', ref: undefined},
+    {texture: 'ROBO_02_TEXTURE.jpg', object: 'ROBO_02_OK.obj', ref: undefined},
+    {texture: 'missile_texture.jpg', object: 'missile.obj'   , ref: undefined},
+    {texture: 'muro_texture.jpg'   , object: 'muro.obj'      , ref: undefined},
+    {texture: undefined            , object: 'power.obj'     , ref: undefined, color:0xFF0000},
+    {texture: undefined            , object: 'heal.obj'      , ref: undefined, color:0x00FF00},
+    {texture: undefined            , object: 'haste.obj'     , ref: undefined, color:0x0000FF},
 ];
 
 var avatars = document.getElementsByClassName('choose_player');
@@ -304,8 +304,10 @@ function update() {
                     invisible_walls[i].object.material.opacity = 1;
                 }
                 invisible_walls = [];
+                add_camera_arrows();
             }
             else {
+                remove_camera_arrows();
                 camera_changed = true;
             }
             use_eagle_camera = !use_eagle_camera;
@@ -609,7 +611,7 @@ function loadObjects3d(objects3d, index, manager){
 
     var texture = undefined;
 
-    if (objects3d[index].texture != null){
+    if (objects3d[index].texture != undefined){
         texture = new THREE.Texture();
 
         var image_loader = new THREE.ImageLoader(manager);
@@ -618,7 +620,7 @@ function loadObjects3d(objects3d, index, manager){
             texture.needsUpdate = true;
         });
     }
-    
+
     var obj_loader = new THREE.OBJLoader(manager);
     obj_loader.load(objects3d[index].object, function (object){
         object.traverse(function (child) {
@@ -650,6 +652,58 @@ function start_websocket(){
     ws.onerror = function() {
         alert('ERROR');
     }
+}
+
+
+function add_camera_arrows(){
+    var arrows = [
+        ['arrow arrow_top'  , move_camera_up   ],
+        ['arrow arrow_left' , move_camera_left ],
+        ['arrow arrow_right', move_camera_right],
+        ['arrow arrow_bot'  , move_camera_down ],
+        ['zoom zoom-in'     , move_camera_in   ],
+        ['zoom zoom-out'    , move_camera_out  ],
+    ];
+
+    var arrows_div = document.createElement('div');
+    arrows_div.id = 'arrows';
+    for (i in arrows){
+        var arrow = document.createElement('div');
+        arrow.className = arrows[i][0];
+        arrow.onclick = arrows[i][1];
+        arrows_div.appendChild(arrow);
+    }
+    document.body.appendChild(arrows_div);
+}
+
+function remove_camera_arrows(){
+    document.getElementById('arrows').remove();
+}
+
+function move_camera_up(){
+    eagleCamera.position.z -= 50;
+}
+
+function move_camera_down(){
+    eagleCamera.position.z += 50;
+}
+
+function move_camera_left(){
+    eagleCamera.position.x -= 50;
+}
+
+function move_camera_right(){
+    eagleCamera.position.x += 50;
+}
+
+function move_camera_in(){
+    if (eagleCamera.position.y >= 500){
+        eagleCamera.position.y -= 100;
+    }
+}
+
+function move_camera_out(){
+    eagleCamera.position.y += 100;
 }
 
 function game_over(h2_class, text){
