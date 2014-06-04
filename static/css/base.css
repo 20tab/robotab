@@ -105,6 +105,77 @@ h2.winner{
     color: green;
 }
 
-#background {
+#arrows{
+    position: absolute;
+    top:300;
+    right: 300;
+}
 
+.arrow {
+    position: inherit;
+    width: 0;
+    height: 0;
+    border-style: solid;
+}
+
+.arrow_top {
+    border-width: 0 37.5px 65.0px 37.5px;
+    border-color: transparent transparent #000000 transparent;
+}
+
+.arrow_top:active {
+    border-color: transparent transparent #ff9900 transparent;
+    top: 1;
+}
+
+.arrow_bot {
+    top: 139;
+    border-width: 65.0px 37.5px 0 37.5px;
+    border-color: #000000 transparent transparent transparent;
+}
+
+.arrow_bot:active {
+    border-color: #ff9900 transparent transparent transparent;
+    top: 140;
+}
+
+.arrow_right {
+    left: 75;
+    top: 65;
+    border-width: 37.5px 0 37.5px 65.0px;
+    border-color: transparent transparent transparent #000000;
+}
+
+.arrow_right:active {
+    border-color: transparent transparent transparent #ff9900;
+    top: 66;
+}
+
+.arrow_left {
+    left: -66;
+    top: 65;
+    border-width: 37.5px 65.0px 37.5px 0;
+    border-color: transparent #000000 transparent transparent;
+}
+
+.arrow_left:active {
+    border-color: transparent #ff9900 transparent transparent;
+    top: 66;
+}
+
+.zoom{
+    width: 74;
+    height: 35;
+    background-color: black;
+    position: inherit;
+    color: white;
+    text-align: center;
+}
+
+.zoom-in{
+    top: 66;
+}
+
+.zoom-out{
+    top:103;
 }
