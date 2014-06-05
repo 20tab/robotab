@@ -656,23 +656,28 @@ function start_websocket(){
 
 
 function add_camera_arrows(){
-    var arrows = [
-        ['arrow arrow_top'  , move_camera_up   ],
-        ['arrow arrow_left' , move_camera_left ],
-        ['arrow arrow_right', move_camera_right],
-        ['arrow arrow_bot'  , move_camera_down ],
-        ['zoom zoom-in'     , move_camera_in   ],
-        ['zoom zoom-out'    , move_camera_out  ],
+    var directional_cmds = [
+        ['arrow_top'  , 'arrow unselectable', move_camera_up   , ''],
+        ['arrow_left' , 'arrow unselectable', move_camera_left , ''],
+        ['arrow_right', 'arrow unselectable', move_camera_right, ''],
+        ['arrow_bot'  , 'arrow unselectable', move_camera_down , ''],
+        ['zoom-in'    , 'zoom unselectable' , move_camera_in   , '+'],
+        ['zoom-out'   , 'zoom unselectable' , move_camera_out  , '-'],
     ];
 
     var arrows_div = document.createElement('div');
     arrows_div.id = 'arrows';
-    for (i in arrows){
+    for (i in directional_cmds){
         var arrow = document.createElement('div');
-        arrow.className = arrows[i][0];
-        arrow.onclick = arrows[i][1];
+        arrow.id = directional_cmds[i][0]
+        arrow.className = directional_cmds[i][1];
+        arrow.onclick = directional_cmds[i][2];
+        arrow.innerHTML = directional_cmds[i][3];
         arrows_div.appendChild(arrow);
     }
+    // document.getElementById('zoom-in').innerHTML = '+';
+    // document.getElementById('zoom-out').innerHTML = '-';
+
     document.body.appendChild(arrows_div);
 }
 

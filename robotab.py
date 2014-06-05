@@ -46,6 +46,7 @@ class ArenaObject(object):
         dh = self.height * self.scale + height
         return (dx < dw) and (dy < dh)
 
+
 class Bonus(object):
 
     def __init__(self, game, id, x, y, type):
@@ -282,7 +283,7 @@ class Arena(object):
             if (len(self.players) == 1 and self.started):
                 self.finished = True
                 self.winning_logic()
-                self.restart_game()
+                self.restart_game(11)
                 break
             elif (len(self.players) == 0):
                 self.finished = True
@@ -321,14 +322,12 @@ class Arena(object):
                 self.players[p].update_gfx()
             gevent.sleep(1)
             if self.finished:
-                self.started = False
                 self.greenlets['start'] = self.start
                 print("ending")
                 return
 
         warmup = self.warmup
-        #for p in self.players.keys():
-        #    self.players[p].update_gfx()
+
         while warmup > 0:
             gevent.sleep(1.0)
             self.broadcast("warmup,{} seconds to start".format(warmup))
@@ -339,10 +338,7 @@ class Arena(object):
         gevent.sleep()
         self.broadcast("FIGHT!!!")
         gevent.sleep()
-        # this queue is initialized on game startup
-        # with a random list of bonus/malus items to drop on the arena
-        # it is consumed every 10 seconds
-        # consume bonus_malus_queue
+
         bm_counter = 0
         while not self.finished:
             gevent.sleep(10.0)
