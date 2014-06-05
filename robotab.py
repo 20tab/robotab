@@ -379,6 +379,7 @@ class Arena(object):
                 self.players[player.name] = player
                 if len(self.players) >= self.max_players:
                     break
+        self.broadcast('waiting for players')
 
 
 class Player(object):
