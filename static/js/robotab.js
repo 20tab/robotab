@@ -111,8 +111,8 @@ function ws_recv(e) {
         }
         draw_hud_div(players[args[1]]);
         if (args[1] == me){
-            use_eagle_camera = true;
             can_use_keyboard = false;
+            use_eagle_camera = true;
             var h2_class, text;
             if (args[0] == 'winner'){
                 h2_class = 'winner';
@@ -274,7 +274,7 @@ function animate()
     update();
 }
 
-var use_eagle_camera = false;
+var use_eagle_camera = true;
 var is_pressing = false;
 var camera_changed = false;
 
@@ -304,10 +304,14 @@ function update() {
                     invisible_walls[i].object.material.opacity = 1;
                 }
                 invisible_walls = [];
-                add_camera_arrows();
+                add_eagle_camera_arrows();
+                document.getElementById('zoom-in').onclick = move_eagle_camera_in;
+                document.getElementById('zoom-out').onclick = move_eagle_camera_out;
             }
             else {
-                remove_camera_arrows();
+                remove_eagle_camera_arrows();
+                document.getElementById('zoom-in').onclick = move_back_camera_in;
+                document.getElementById('zoom-out').onclick = move_back_camera_out;
                 camera_changed = true;
             }
             use_eagle_camera = !use_eagle_camera;
@@ -490,7 +494,10 @@ function add_player(name, avatar, x, y, z, r, scale, color) {
         var direction = players[name].position.clone().sub(position).normalize();
 
         raycaster = new THREE.Raycaster(position, direction, 0, 350);
+        use_eagle_camera = false;
+        add_camera_focus();
     }
+
     players[name].position.x = parseFloat(x);
     players[name].position.y = parseFloat(y);
     players[name].position.z = parseFloat(z);
@@ -504,7 +511,6 @@ function remove_player(player){
     scene.remove(player);
     // removeReferences(player);
     player.dirty = false;
-    console.log('removing player ' + player.name);
     delete players[player.name];
 }
 
@@ -654,65 +660,95 @@ function start_websocket(){
     }
 }
 
+function create_element(el_type, id, className, onclick, innerHTML){
+    var element = document.createElement(el_type);
+    element.id = id;
+    element.className = className;
+    element.onclick = onclick;
+    element.innerHTML = innerHTML;
+    return element;
+}
 
-function add_camera_arrows(){
-    var arrows = [
-        ['arrow arrow_top'  , move_camera_up   ],
-        ['arrow arrow_left' , move_camera_left ],
-        ['arrow arrow_right', move_camera_right],
-        ['arrow arrow_bot'  , move_camera_down ],
-        ['zoom zoom-in'     , move_camera_in   ],
-        ['zoom zoom-out'    , move_camera_out  ],
-    ];
-
-    var arrows_div = document.createElement('div');
-    arrows_div.id = 'arrows';
-    for (i in arrows){
-        var arrow = document.createElement('div');
-        arrow.className = arrows[i][0];
-        arrow.onclick = arrows[i][1];
-        arrows_div.appendChild(arrow);
+function create_and_append_elements_to_father(el_list, father_id){
+    var father = document.getElementById(father_id);
+    for (i in el_list){
+        var el = create_element(el_list[i][0], el_list[i][1], el_list[i][2], el_list[i][3], el_list[i][4]);
+        father.appendChild(el);
     }
-    document.body.appendChild(arrows_div);
 }
 
-function remove_camera_arrows(){
-    document.getElementById('arrows').remove();
+function add_camera_focus(){
+    var focus = [
+        ['div', 'zoom-in' , 'zoom unselectable', move_back_camera_in , '+'],
+        ['div', 'zoom-out', 'zoom unselectable', move_back_camera_out, '-']
+    ];
+    create_and_append_elements_to_father(focus, 'arrows');
 }
 
-function move_camera_up(){
+function add_eagle_camera_arrows(){
+    var directional_arrows = [
+        ['div', 'arrow-top'  , 'arrow unselectable', move_eagle_camera_up   , ''],
+        ['div', 'arrow-left' , 'arrow unselectable', move_eagle_camera_left , ''],
+        ['div', 'arrow-right', 'arrow unselectable', move_eagle_camera_right, ''],
+        ['div', 'arrow-bot'  , 'arrow unselectable', move_eagle_camera_down , '']
+    ];
+    create_and_append_elements_to_father(directional_arrows, 'arrows');
+}
+
+function remove_eagle_camera_arrows(){
+    var directional_arrows_ids = ['arrow-top', 'arrow-left', 'arrow-right', 'arrow-bot'];
+    for (i in directional_arrows_ids){
+        document.getElementById(directional_arrows_ids[i]).remove();
+    }
+}
+
+function move_eagle_camera_up(){
     eagleCamera.position.z -= 50;
 }
 
-function move_camera_down(){
+function move_eagle_camera_down(){
     eagleCamera.position.z += 50;
 }
 
-function move_camera_left(){
+function move_eagle_camera_left(){
     eagleCamera.position.x -= 50;
 }
 
-function move_camera_right(){
+function move_eagle_camera_right(){
     eagleCamera.position.x += 50;
 }
 
-function move_camera_in(){
+function move_eagle_camera_in(){
     if (eagleCamera.position.y >= 500){
         eagleCamera.position.y -= 100;
     }
 }
 
-function move_camera_out(){
+function move_eagle_camera_out(){
     eagleCamera.position.y += 100;
 }
 
+function move_back_camera_in(){
+    if (backCamera.position.z < -80){
+        backCamera.position.z += 10;
+        raycaster.far -= 50;
+    }
+}
+
+function move_back_camera_out(){
+    backCamera.position.z -= 10;
+    raycaster.far += 50;
+}
+
 function game_over(h2_class, text){
-    var threejs_div = document.getElementById('ThreeJS');
-    var div = document.createElement('div');
-    var h2 = document.createElement('h2');
-    div.id = 'game_over';
-    h2.innerHTML = text;
-    h2.className = h2_class;
-    div.appendChild(h2);
-    threejs_div.appendChild(div);
+    var div = [
+        ['div', 'game_over', '', '', '']
+    ];
+
+    var h2 = [
+        ['h2', '', h2_class, '', text]
+    ];
+
+    create_and_append_elements_to_father(div, 'ThreeJS');
+    create_and_append_elements_to_father(h2, 'game_over');
 }
