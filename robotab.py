@@ -248,13 +248,13 @@ class Arena(object):
                 self.players[p].arena_object.width * self.players[p].arena_object.scale,
                 self.players[p].arena_object.height * self.players[p].arena_object.scale,
             ):
-                if player.attack == 1:
-                    if self.players[p].attack == 0:
-                        self.players[p].damage(1.0, player.name)
-                    else:
-                        self.players[p].damage(1.0, player.name)
-                elif self.players[p]. attack == 1:
-                    player.damage(1.0, 'himself')
+                # if player.attack == 1:
+                #     if self.players[p].attack == 0:
+                #         self.players[p].damage(1.0, player.name)
+                #     else:
+                #         self.players[p].damage(1.0, player.name)
+                # elif self.players[p]. attack == 1:
+                #     player.damage(1.0, 'himself')
                 self.broadcast("collision between {} and {}".format(player.name, p))
                 return True
         for wall in self.walls:
@@ -366,8 +366,8 @@ class Arena(object):
         winner_name = self.players.keys()[0]
         self.players[winner_name].end('winner')
 
-    def restart_game(self):
-        countdown = 15
+    def restart_game(self, countdown=15):
+        countdown = countdown
         while countdown > 0:
             self.broadcast('next game will start in {} seconds'.format(countdown))
             gevent.sleep(1)

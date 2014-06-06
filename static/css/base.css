@@ -98,9 +98,11 @@ body {
     opacity: 0.7;
     z-index: 99999;
 }
+
 h2.loser{
     color: red;
 }
+
 h2.winner{
     color: green;
 }
@@ -118,47 +120,47 @@ h2.winner{
     border-style: solid;
 }
 
-#arrow_top {
+#arrow-top {
     border-width: 0 37.5px 65.0px 37.5px;
     border-color: transparent transparent #000000 transparent;
 }
 
-#arrow_top:active {
+#arrow-top:active {
     border-color: transparent transparent #ff9900 transparent;
     top: 1;
 }
 
-#arrow_bot {
+#arrow-bot {
     top: 141;
     border-width: 65.0px 37.5px 0 37.5px;
     border-color: #000000 transparent transparent transparent;
 }
 
-#arrow_bot:active {
+#arrow-bot:active {
     border-color: #ff9900 transparent transparent transparent;
     top: 142;
 }
 
-#arrow_right {
+#arrow-right {
     left: 76;
     top: 66;
     border-width: 37.5px 0 37.5px 65.0px;
     border-color: transparent transparent transparent #000000;
 }
 
-#arrow_right:active {
+#arrow-right:active {
     border-color: transparent transparent transparent #ff9900;
     top: 67;
 }
 
-#arrow_left {
+#arrow-left {
     left: -67;
     top: 66;
     border-width: 37.5px 65.0px 37.5px 0;
     border-color: transparent #000000 transparent transparent;
 }
 
-#arrow_left:active {
+#arrow-left:active {
     border-color: transparent #ff9900 transparent transparent;
     top: 67;
 }
