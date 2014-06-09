@@ -20,6 +20,10 @@ var invisible_walls = [];
 var posters = [];
 var bonus_malus = {};
 
+var healtbar;
+var health;
+
+
 var objects = [
     {texture: 'ROBO_01_TEXTURE.jpg', object: 'ROBO_01_OK.obj', ref: undefined},
     {texture: 'ROBO_02_TEXTURE.jpg', object: 'ROBO_02_OK.obj', ref: undefined},
@@ -113,6 +117,8 @@ function ws_recv(e) {
         if (args[1] == me){
             can_use_keyboard = false;
             use_eagle_camera = true;
+            document.getElementById('arrows').remove();
+            document.getElementById('healthbar').remove();
             var h2_class, text;
             if (args[0] == 'winner'){
                 h2_class = 'winner';
@@ -430,10 +436,11 @@ function update() {
                 invisible_walls.push(obstacles[i]);
             }
             camera_changed = false;
+            var percentage = player.energy / 100.0;
+            health.style.width = ((200 * player.energy) / 100.0) + 'px';
         }
         player.dirty = false;
     });
-
 }
 
 function add_player(name, avatar, x, y, z, r, scale, color) {
@@ -496,6 +503,22 @@ function add_player(name, avatar, x, y, z, r, scale, color) {
         raycaster = new THREE.Raycaster(position, direction, 0, 350);
         use_eagle_camera = false;
         add_camera_focus();
+
+        create_and_append_elements_to_father([['div', 'healthbar', '', '', '']], 'ThreeJS');
+        create_and_append_elements_to_father([['div', 'health', '', '', '']], 'healthbar');
+
+        health = document.getElementById('health');
+
+
+        // healthbar_context.fillStyle = "Red";
+        // healthbar_context.font = "18px sans-serif";
+        // healthbar_context.fillText("Life " + players[name].energy +"/"+ 100 +" = " + 1 * 100 +"%", 20, 20);
+
+        // healthbar_context.fillStyle = "black";
+        // healthbar_context.fillRect(300 , 500, 200, 20);
+
+        // healthbar_context.fillStyle = "red";
+        // healthbar_context.fillRect(300, 500, 200, 20);
     }
 
     players[name].position.x = parseFloat(x);

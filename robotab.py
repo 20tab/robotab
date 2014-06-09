@@ -190,10 +190,13 @@ class Arena(object):
 
     def msg_handler(self, player, msg):
         p, cmd = msg.split(':')
-        if cmd in ('at', 'AT'):
-            self.players[p].attack_cmd = cmd
-        else:
-            self.players[p].cmd = cmd
+        try:
+            if cmd in ('at', 'AT'):
+                self.players[p].attack_cmd = cmd
+            else:
+                self.players[p].cmd = cmd
+        except KeyError:
+            print 'Player {} does not exists or is dead'.format(p)
 
     def attack_cmd_handler(self, player, cmd):
         if cmd == 'AT':
