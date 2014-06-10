@@ -26,6 +26,7 @@ var particles, particleSystem;
 var particleCount = 500;
 
 
+
 var objects = [
     {texture: 'ROBO_01_TEXTURE.jpg', object: 'ROBO_01_OK.obj', ref: undefined},
     {texture: 'ROBO_02_TEXTURE.jpg', object: 'ROBO_02_OK.obj', ref: undefined},
@@ -307,6 +308,27 @@ function init(){
 function start_the_world() {
     ws.send(me + ':' + avatar);
     animate();
+
+    var stats = new Stats();
+    stats.setMode(1); // 0: fps, 1: ms
+
+    // Align top-left
+    stats.domElement.style.position = 'absolute';
+    stats.domElement.style.left = '0px';
+    stats.domElement.style.top = '600px';
+
+    document.body.appendChild( stats.domElement );
+
+    setInterval( function () {
+
+        stats.begin();
+
+        // your code goes here
+
+        stats.end();
+
+    }, 1000 / 60 );
+
 }
 
 var clock = new THREE.Clock();
