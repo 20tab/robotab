@@ -20,14 +20,21 @@ var invisible_walls = [];
 var posters = [];
 var bonus_malus = {};
 
+var healtbar;
+var health;
+var particles, particleSystem;
+var particleCount = 500;
+
+
+
 var objects = [
-    {texture: 'ROBO_01_TEXTURE.jpg', object: 'ROBO_01_OK.obj', ref: null},
-    {texture: 'ROBO_02_TEXTURE.jpg', object: 'ROBO_02_OK.obj', ref: null},
-    {texture: 'missile_texture.jpg', object: 'missile.obj'   , ref: null},
-    {texture: 'muro_texture.jpg'   , object: 'muro.obj'      , ref: null},
-    {texture: null                 , object: 'power.obj'     , ref: null, color:0xFF0000},
-    {texture: null                 , object: 'heal.obj'      , ref: null, color:0x00FF00},
-    {texture: null                 , object: 'haste.obj'     , ref: null, color:0x0000FF},
+    {texture: 'ROBO_01_TEXTURE.jpg', object: 'ROBO_01_OK.obj', ref: undefined},
+    {texture: 'ROBO_02_TEXTURE.jpg', object: 'ROBO_02_OK.obj', ref: undefined},
+    {texture: 'missile_texture.jpg', object: 'missile.obj'   , ref: undefined},
+    {texture: 'muro_texture.jpg'   , object: 'muro.obj'      , ref: undefined},
+    {texture: undefined            , object: 'power.obj'     , ref: undefined, color:0xFF0000},
+    {texture: undefined            , object: 'heal.obj'      , ref: undefined, color:0x00FF00},
+    {texture: undefined            , object: 'haste.obj'     , ref: undefined, color:0x0000FF},
 ];
 
 var avatars = document.getElementsByClassName('choose_player');
@@ -112,8 +119,10 @@ function ws_recv(e) {
         }
         draw_hud_div(players[args[1]]);
         if (args[1] == me){
-            use_eagle_camera = true;
             can_use_keyboard = false;
+            use_eagle_camera = true;
+            document.getElementById('arrows').remove();
+            document.getElementById('healthbar').remove();
             var h2_class, text;
             if (args[0] == 'winner'){
                 h2_class = 'winner';
@@ -251,6 +260,44 @@ function init(){
     backgroundScene.add(backgroundMesh);
     keyboard = new THREEx.KeyboardState();
 
+
+    particles = new THREE.Geometry();
+    var pMaterial = new THREE.ParticleBasicMaterial({
+        color: 0xFFFFFF,
+        size: 1,
+        map: THREE.ImageUtils.loadTexture(
+            "particle.png"
+        ),
+        blending: THREE.AdditiveBlending,
+        transparent: true
+    });
+
+    for (var p = 0; p < particleCount; p++) {
+
+      // create a particle with random
+      // position values, -2000 -> 2000
+      var pX = Math.random() * 4000 - 2000,
+          pY = Math.random() * 200,
+          pZ = Math.random() * 4000 - 2000,
+          particle = new THREE.Vector3(pX, pY, pZ);
+
+      // add it to the geometry
+      particles.vertices.push(particle);
+      particle.velocity = new THREE.Vector3(
+        0,              // x
+        -Math.random(), // y: random vel
+        0);
+    }
+    particleSystem = new THREE.ParticleSystem(
+    particles,
+    pMaterial);
+
+    particleSystem.sortParticles = true;
+    particleSystem.visible = false;
+// add it to the scene
+    scene.add(particleSystem);
+
+
     var manager = new THREE.LoadingManager();
     manager.onProgress = function ( item, loaded, total ) {
         // console.log( item, loaded, total );
@@ -262,6 +309,27 @@ function init(){
 function start_the_world() {
     ws.send(me + ':' + avatar);
     animate();
+
+    var stats = new Stats();
+    stats.setMode(1); // 0: fps, 1: ms
+
+    // Align top-left
+    stats.domElement.style.position = 'absolute';
+    stats.domElement.style.left = '0px';
+    stats.domElement.style.top = '600px';
+
+    document.body.appendChild( stats.domElement );
+
+    setInterval( function () {
+
+        stats.begin();
+
+        // your code goes here
+
+        stats.end();
+
+    }, 1000 / 60 );
+
 }
 
 var clock = new THREE.Clock();
@@ -275,7 +343,7 @@ function animate()
     update();
 }
 
-var use_eagle_camera = false;
+var use_eagle_camera = true;
 var is_pressing = false;
 var camera_changed = false;
 
@@ -305,8 +373,16 @@ function update() {
                     invisible_walls[i].object.material.opacity = 1;
                 }
                 invisible_walls = [];
+                add_eagle_camera_arrows();
+                document.getElementById('zoom-in').onclick = move_eagle_camera_in;
+                document.getElementById('zoom-out').onclick = move_eagle_camera_out;
+                particleSystem.visible = false;
             }
             else {
+                remove_eagle_camera_arrows();
+                document.getElementById('zoom-in').onclick = move_back_camera_in;
+                document.getElementById('zoom-out').onclick = move_back_camera_out;
+                particleSystem.visible = true;
                 camera_changed = true;
             }
             use_eagle_camera = !use_eagle_camera;
@@ -425,9 +501,39 @@ function update() {
                 invisible_walls.push(obstacles[i]);
             }
             camera_changed = false;
+            var percentage = player.energy / 100.0;
+            health.style.width = ((200 * player.energy) / 100.0) + 'px';
         }
         player.dirty = false;
     });
+
+    if(!use_eagle_camera){
+        particleSystem.rotation.y += 0.01;
+        var pCount = particleCount;
+        while (pCount--) {
+
+            // get the particle
+            var particle = particles.vertices[pCount];
+
+            // check if we need to reset
+            if (particle.y < 0) {
+                particle.y = 200;
+                particle.velocity.y = 0;
+            }
+
+            // update the velocity with
+            // a splat of randomniz
+            particle.velocity.y -= Math.random() * .1;
+
+            // and the position
+            particle.add(
+                particle.velocity);
+        }
+
+        // flag to the particle system
+        // that we've changed its vertices.
+        particleSystem.geometry.__dirtyVertices = true;
+    }
 
 }
 
@@ -489,7 +595,26 @@ function add_player(name, avatar, x, y, z, r, scale, color) {
         var direction = players[name].position.clone().sub(position).normalize();
 
         raycaster = new THREE.Raycaster(position, direction, 0, 350);
+        use_eagle_camera = false;
+        add_camera_focus();
+
+        create_and_append_elements_to_father([['div', 'healthbar', '', '', '']], 'ThreeJS');
+        create_and_append_elements_to_father([['div', 'health', '', '', '']], 'healthbar');
+
+        health = document.getElementById('health');
+        particleSystem.visible = true;
+
+        // healthbar_context.fillStyle = "Red";
+        // healthbar_context.font = "18px sans-serif";
+        // healthbar_context.fillText("Life " + players[name].energy +"/"+ 100 +" = " + 1 * 100 +"%", 20, 20);
+
+        // healthbar_context.fillStyle = "black";
+        // healthbar_context.fillRect(300 , 500, 200, 20);
+
+        // healthbar_context.fillStyle = "red";
+        // healthbar_context.fillRect(300, 500, 200, 20);
     }
+
     players[name].position.x = parseFloat(x);
     players[name].position.y = parseFloat(y);
     players[name].position.z = parseFloat(z);
@@ -503,7 +628,6 @@ function remove_player(player){
     scene.remove(player);
     // removeReferences(player);
     player.dirty = false;
-    console.log('removing player ' + player.name);
     delete players[player.name];
 }
 
@@ -610,7 +734,7 @@ function loadObjects3d(objects3d, index, manager){
 
     var texture = undefined;
 
-    if (objects3d[index].texture != null){
+    if (objects3d[index].texture != undefined){
         texture = new THREE.Texture();
 
         var image_loader = new THREE.ImageLoader(manager);
@@ -619,7 +743,7 @@ function loadObjects3d(objects3d, index, manager){
             texture.needsUpdate = true;
         });
     }
-    
+
     var obj_loader = new THREE.OBJLoader(manager);
     obj_loader.load(objects3d[index].object, function (object){
         object.traverse(function (child) {
@@ -653,13 +777,95 @@ function start_websocket(){
     }
 }
 
+function create_element(el_type, id, className, onclick, innerHTML){
+    var element = document.createElement(el_type);
+    element.id = id;
+    element.className = className;
+    element.onclick = onclick;
+    element.innerHTML = innerHTML;
+    return element;
+}
+
+function create_and_append_elements_to_father(el_list, father_id){
+    var father = document.getElementById(father_id);
+    for (i in el_list){
+        var el = create_element(el_list[i][0], el_list[i][1], el_list[i][2], el_list[i][3], el_list[i][4]);
+        father.appendChild(el);
+    }
+}
+
+function add_camera_focus(){
+    var focus = [
+        ['div', 'zoom-in' , 'zoom unselectable', move_back_camera_in , '+'],
+        ['div', 'zoom-out', 'zoom unselectable', move_back_camera_out, '-']
+    ];
+    create_and_append_elements_to_father(focus, 'arrows');
+}
+
+function add_eagle_camera_arrows(){
+    var directional_arrows = [
+        ['div', 'arrow-top'  , 'arrow unselectable', move_eagle_camera_up   , ''],
+        ['div', 'arrow-left' , 'arrow unselectable', move_eagle_camera_left , ''],
+        ['div', 'arrow-right', 'arrow unselectable', move_eagle_camera_right, ''],
+        ['div', 'arrow-bot'  , 'arrow unselectable', move_eagle_camera_down , '']
+    ];
+    create_and_append_elements_to_father(directional_arrows, 'arrows');
+}
+
+function remove_eagle_camera_arrows(){
+    var directional_arrows_ids = ['arrow-top', 'arrow-left', 'arrow-right', 'arrow-bot'];
+    for (i in directional_arrows_ids){
+        document.getElementById(directional_arrows_ids[i]).remove();
+    }
+}
+
+function move_eagle_camera_up(){
+    eagleCamera.position.z -= 50;
+}
+
+function move_eagle_camera_down(){
+    eagleCamera.position.z += 50;
+}
+
+function move_eagle_camera_left(){
+    eagleCamera.position.x -= 50;
+}
+
+function move_eagle_camera_right(){
+    eagleCamera.position.x += 50;
+}
+
+function move_eagle_camera_in(){
+    if (eagleCamera.position.y >= 500){
+        eagleCamera.position.y -= 100;
+    }
+}
+
+function move_eagle_camera_out(){
+    eagleCamera.position.y += 100;
+}
+
+function move_back_camera_in(){
+    if (backCamera.position.z < -80){
+        backCamera.position.z += 10;
+        raycaster.far -= 50;
+    }
+}
+
+function move_back_camera_out(){
+    backCamera.position.z -= 10;
+    raycaster.far += 50;
+}
+
 function game_over(h2_class, text){
-    var threejs_div = document.getElementById('ThreeJS');
-    var div = document.createElement('div');
-    var h2 = document.createElement('h2');
-    div.id = 'game_over';
-    h2.innerHTML = text;
-    h2.className = h2_class;
-    div.appendChild(h2);
-    threejs_div.appendChild(div);
+    var div = [
+        ['div', 'game_over', '', '', '']
+    ];
+
+    var h2 = [
+        ['h2', '', h2_class, '', text]
+    ];
+
+    create_and_append_elements_to_father(div, 'ThreeJS');
+    create_and_append_elements_to_father(h2, 'game_over');
 }

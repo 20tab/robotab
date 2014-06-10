@@ -98,13 +98,128 @@ body {
     opacity: 0.7;
     z-index: 99999;
 }
+
 h2.loser{
     color: red;
 }
+
 h2.winner{
     color: green;
 }
 
-#background {
+#arrows{
+    position: absolute;
+    bottom:250;
+    right: 250;
+    opacity: 0.7;
+}
 
+.arrow {
+    position: inherit;
+    width: 0;
+    height: 0;
+    border-style: solid;
+}
+
+#arrow-top {
+    border-width: 0 37.5px 65.0px 37.5px;
+    border-color: transparent transparent #000000 transparent;
+}
+
+#arrow-top:active {
+    border-color: transparent transparent #ff9900 transparent;
+    top: 1;
+}
+
+#arrow-bot {
+    top: 141;
+    border-width: 65.0px 37.5px 0 37.5px;
+    border-color: #000000 transparent transparent transparent;
+}
+
+#arrow-bot:active {
+    border-color: #ff9900 transparent transparent transparent;
+    top: 142;
+}
+
+#arrow-right {
+    left: 76;
+    top: 66;
+    border-width: 37.5px 0 37.5px 65.0px;
+    border-color: transparent transparent transparent #000000;
+}
+
+#arrow-right:active {
+    border-color: transparent transparent transparent #ff9900;
+    top: 67;
+}
+
+#arrow-left {
+    left: -67;
+    top: 66;
+    border-width: 37.5px 65.0px 37.5px 0;
+    border-color: transparent #000000 transparent transparent;
+}
+
+#arrow-left:active {
+    border-color: transparent #ff9900 transparent transparent;
+    top: 67;
+}
+
+.zoom {
+    width: 74px;
+    height: 35px;
+    line-height: 35px;
+    background-color: black;
+    position: inherit;
+    color: white;
+    text-align: center;
+}
+
+.zoom:active {
+    background-color: #ff9900;
+}
+
+#zoom-in {
+    top: 67;
+}
+
+#zoom-in:active{
+    top:68;
+}
+
+#zoom-out {
+    top:104;
+}
+
+#zoom-out:active{
+    top:105;
+}
+
+.unselectable {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+#healthbar {
+    border: solid 2px;
+    position: absolute;
+    top: 500;
+    left: 300;
+    height: 30px;
+    width: 200px;
+    background-color: black;
+    z-index: 900;
+    opacity: 0.5;
+}
+
+#health {
+    z-index: 1000;
+    height: 30px;
+    width: 200px;
+    background-color: red;
 }

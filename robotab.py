@@ -46,6 +46,7 @@ class ArenaObject(object):
         dh = self.height * self.scale + height
         return (dx < dw) and (dy < dh)
 
+
 class Bonus(object):
 
     def __init__(self, game, id, x, y, type):
@@ -189,10 +190,13 @@ class Arena(object):
 
     def msg_handler(self, player, msg):
         p, cmd = msg.split(':')
-        if cmd in ('at', 'AT'):
-            self.players[p].attack_cmd = cmd
-        else:
-            self.players[p].cmd = cmd
+        try:
+            if cmd in ('at', 'AT'):
+                self.players[p].attack_cmd = cmd
+            else:
+                self.players[p].cmd = cmd
+        except KeyError:
+            print 'Player {} does not exists or is dead'.format(p)
 
     def attack_cmd_handler(self, player, cmd):
         if cmd == 'AT':
@@ -247,13 +251,13 @@ class Arena(object):
                 self.players[p].arena_object.width * self.players[p].arena_object.scale,
                 self.players[p].arena_object.height * self.players[p].arena_object.scale,
             ):
-                if player.attack == 1:
-                    if self.players[p].attack == 0:
-                        self.players[p].damage(1.0, player.name)
-                    else:
-                        self.players[p].damage(1.0, player.name)
-                elif self.players[p]. attack == 1:
-                    player.damage(1.0, 'himself')
+                # if player.attack == 1:
+                #     if self.players[p].attack == 0:
+                #         self.players[p].damage(1.0, player.name)
+                #     else:
+                #         self.players[p].damage(1.0, player.name)
+                # elif self.players[p]. attack == 1:
+                #     player.damage(1.0, 'himself')
                 self.broadcast("collision between {} and {}".format(player.name, p))
                 return True
         for wall in self.walls:
@@ -282,7 +286,7 @@ class Arena(object):
             if (len(self.players) == 1 and self.started):
                 self.finished = True
                 self.winning_logic()
-                self.restart_game()
+                self.restart_game(11)
                 break
             elif (len(self.players) == 0):
                 self.finished = True
@@ -315,15 +319,18 @@ class Arena(object):
         del self.greenlets['start']
         print("START!!")
         #self.warming_up = True
-        
+
         while len(self.players) < self.min_players:
             for p in self.players.keys():
                 self.players[p].update_gfx()
             gevent.sleep(1)
+            if self.finished:
+                self.greenlets['start'] = self.start
+                print("ending")
+                return
 
         warmup = self.warmup
-        #for p in self.players.keys():
-        #    self.players[p].update_gfx()
+
         while warmup > 0:
             gevent.sleep(1.0)
             self.broadcast("warmup,{} seconds to start".format(warmup))
@@ -334,10 +341,7 @@ class Arena(object):
         gevent.sleep()
         self.broadcast("FIGHT!!!")
         gevent.sleep()
-        # this queue is initialized on game startup
-        # with a random list of bonus/malus items to drop on the arena
-        # it is consumed every 10 seconds
-        # consume bonus_malus_queue
+
         bm_counter = 0
         while not self.finished:
             gevent.sleep(10.0)
@@ -349,6 +353,7 @@ class Arena(object):
         self.broadcast("end")
         self.started = False
         self.greenlets['start'] = self.start
+        print("end")
         gevent.sleep()
 
     def spawn_greenlets(self):
@@ -363,9 +368,9 @@ class Arena(object):
     def winning_logic(self):
         winner_name = self.players.keys()[0]
         self.players[winner_name].end('winner')
-    
-    def restart_game(self):
-        countdown = 10
+
+    def restart_game(self, countdown=15):
+        countdown = countdown
         while countdown > 0:
             self.broadcast('next game will start in {} seconds'.format(countdown))
             gevent.sleep(1)
@@ -377,6 +382,7 @@ class Arena(object):
                 self.players[player.name] = player
                 if len(self.players) >= self.max_players:
                     break
+        self.broadcast('waiting for players')
 
 
 class Player(object):
@@ -443,6 +449,14 @@ class Player(object):
     def wait_for_game(self):
         while self.game.started or self.game.finished or self.name not in self.game.players:
             gevent.sleep(1)
+            try:
+                uwsgi.websocket_recv_nb()
+            except IOError:
+                import sys
+                print sys.exc_info()
+                if self.name in self.players:
+                    self.end('leaver')
+                return [""]
 
 
 class Bullet(object):
@@ -513,13 +527,12 @@ class Robotab(Arena):
 
     def __call__(self, e, sr):
         if e['PATH_INFO'] == '/':
-            sr('200 OK',[('Content-Type','text/html')])
+            sr('200 OK', [('Content-Type', 'text/html')])
             return [open('robotab_ws.html').read()]
 
         if e['PATH_INFO'] == '/robotab.js':
-            sr('200 OK',[('Content-Type','application/javascript')])
+            sr('200 OK', [('Content-Type', 'application/javascript')])
             return [open('static/js/robotab.js').read()]
-
 
         if e['PATH_INFO'] == '/robotab':
             uwsgi.websocket_handshake()
@@ -534,10 +547,12 @@ class Robotab(Arena):
             uwsgi.websocket_send('walls:{}'.format(str(self.walls).replace('),', ';').translate(None, "()")))
             player = Player(self, username, avatar, uwsgi.connection_fd(), *robot_coordinates)
 
-            if self.started or len(self.players) > self.max_players or len(self.waiting_players) > 0:
+            if self.started or self.finished or len(self.players) > self.max_players or len(self.waiting_players) > 0:
+                print('{}:{}:{}:{}'.format(self.started, self.finished, len(self.players) > self.max_players, len(self.waiting_players) > 0))
                 self.waiting_players.append(player)
-                uwsgi.websocket_send("arena:hey {}, game already started or is full, wait for next one...".format(player.name))
+                uwsgi.websocket_send("arena:hey {}, wait for next game".format(player.name))
                 player.wait_for_game()
+                self.waiting_players.remove(player)
             else:
                 self.players[player.name] = player
 
