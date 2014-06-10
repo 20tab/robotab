@@ -58,6 +58,7 @@ for (i in avatars) {
 
 function ws_recv(e) {
      //console.log(e.data);
+    console.log(e.data);
     var items = e.data.split(':');
     if (items[0] == 'arena') {
         var args = items[1].split(',');
