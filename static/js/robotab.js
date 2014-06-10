@@ -22,6 +22,8 @@ var bonus_malus = {};
 
 var healtbar;
 var health;
+var particles, particleSystem;
+var particleCount = 500;
 
 
 var objects = [
@@ -256,6 +258,44 @@ function init(){
     backgroundScene.add(backgroundMesh);
     keyboard = new THREEx.KeyboardState();
 
+
+    particles = new THREE.Geometry();
+    var pMaterial = new THREE.ParticleBasicMaterial({
+        color: 0xFFFFFF,
+        size: 1,
+        map: THREE.ImageUtils.loadTexture(
+            "particle.png"
+        ),
+        blending: THREE.AdditiveBlending,
+        transparent: true
+    });
+
+    for (var p = 0; p < particleCount; p++) {
+
+      // create a particle with random
+      // position values, -2000 -> 2000
+      var pX = Math.random() * 4000 - 2000,
+          pY = Math.random() * 200,
+          pZ = Math.random() * 4000 - 2000,
+          particle = new THREE.Vector3(pX, pY, pZ);
+
+      // add it to the geometry
+      particles.vertices.push(particle);
+      particle.velocity = new THREE.Vector3(
+        0,              // x
+        -Math.random(), // y: random vel
+        0);
+    }
+    particleSystem = new THREE.ParticleSystem(
+    particles,
+    pMaterial);
+
+    particleSystem.sortParticles = true;
+    particleSystem.visible = false;
+// add it to the scene
+    scene.add(particleSystem);
+
+
     var manager = new THREE.LoadingManager();
     manager.onProgress = function ( item, loaded, total ) {
         // console.log( item, loaded, total );
@@ -313,11 +353,13 @@ function update() {
                 add_eagle_camera_arrows();
                 document.getElementById('zoom-in').onclick = move_eagle_camera_in;
                 document.getElementById('zoom-out').onclick = move_eagle_camera_out;
+                particleSystem.visible = false;
             }
             else {
                 remove_eagle_camera_arrows();
                 document.getElementById('zoom-in').onclick = move_back_camera_in;
                 document.getElementById('zoom-out').onclick = move_back_camera_out;
+                particleSystem.visible = true;
                 camera_changed = true;
             }
             use_eagle_camera = !use_eagle_camera;
@@ -441,6 +483,35 @@ function update() {
         }
         player.dirty = false;
     });
+
+    if(!use_eagle_camera){
+        particleSystem.rotation.y += 0.01;
+        var pCount = particleCount;
+        while (pCount--) {
+
+            // get the particle
+            var particle = particles.vertices[pCount];
+
+            // check if we need to reset
+            if (particle.y < 0) {
+                particle.y = 200;
+                particle.velocity.y = 0;
+            }
+
+            // update the velocity with
+            // a splat of randomniz
+            particle.velocity.y -= Math.random() * .1;
+
+            // and the position
+            particle.add(
+                particle.velocity);
+        }
+
+        // flag to the particle system
+        // that we've changed its vertices.
+        particleSystem.geometry.__dirtyVertices = true;
+    }
+
 }
 
 function add_player(name, avatar, x, y, z, r, scale, color) {
@@ -508,7 +579,7 @@ function add_player(name, avatar, x, y, z, r, scale, color) {
         create_and_append_elements_to_father([['div', 'health', '', '', '']], 'healthbar');
 
         health = document.getElementById('health');
-
+        particleSystem.visible = true;
 
         // healthbar_context.fillStyle = "Red";
         // healthbar_context.font = "18px sans-serif";
