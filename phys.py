@@ -4,6 +4,7 @@ import redis
 import uwsgi
 import gevent
 
+
 class Box(object):
     def __init__(self, name, world, weight, size):
         self.body = ode.Body(world.world)
@@ -11,7 +12,7 @@ class Box(object):
         M.setBox(7900, size, size, size)
         M.mass = weight / 9.81
         self.body.setMass(M)
-	self.geom = ode.GeomBox(world.space, lengths=(size, size, size))
+        self.geom = ode.GeomBox(world.space, lengths=(size, size, size))
         self.geom.setBody(self.body)
         world.boxes[name] = self
         self.name = name
@@ -25,7 +26,7 @@ class Box(object):
     def rotateY(self, amount):
         self.ry += amount
         self.geom.setQuaternion((1.0, self.rx, self.ry, self.rz))
-        
+
     def set_pos(self, x, y, z):
         self.body.setPosition((x, y, z))
 
@@ -34,9 +35,9 @@ class Box(object):
         rot_w,rot_x,rot_y,rot_z = self.body.getQuaternion()
         msg = '{name}:{pos_x},{pos_y},{pos_z:},{size_x},{size_y},{size_z},{rot_x:.2f},{rot_y:.2f},{rot_z:.2f}'.format(
             name=self.name,
-            pos_x=int(pos_x), 
-            pos_y=int(pos_y), 
-            pos_z=int(pos_z), 
+            pos_x=int(pos_x),
+            pos_y=int(pos_y),
+            pos_z=int(pos_z),
             size_x=self.size,
             size_y=self.size,
             size_z=self.size,
@@ -49,7 +50,7 @@ class Box(object):
                 print msg
             self.world.redis.publish('phys', msg)
             self.last_msg = msg
-    
+
 
 class World(object):
     def __init__(self):
@@ -109,7 +110,7 @@ def application(e, sr):
         gevent.spawn(physic_engine, w)
         ufd = uwsgi.connection_fd()
         while True:
-            
+
             ready = gevent.select.select([ufd, w.redis_fd], [], [], timeout=4.0)
 
             if not ready[0]:

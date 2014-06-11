@@ -46,7 +46,7 @@
 
 	var texture = THREE.ImageUtils.loadTexture( 'crate.gif');
 
-        var ws = new WebSocket('ws://trusty64.local:9090/phys');
+        var ws = new WebSocket('ws://localhost:9090/phys');
         ws.onmessage = function(e) {
                 //console.log(e.data);
                 var items = e.data.split(':')

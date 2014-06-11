@@ -277,7 +277,7 @@ function init(){
       // create a particle with random
       // position values, -2000 -> 2000
       var pX = Math.random() * 4000 - 2000,
-          pY = Math.random() * 200,
+          pY = Math.random() * 300,
           pZ = Math.random() * 4000 - 2000,
           particle = new THREE.Vector3(pX, pY, pZ);
 
@@ -294,7 +294,7 @@ function init(){
 
     particleSystem.sortParticles = true;
     particleSystem.visible = false;
-// add it to the scene
+    // add it to the scene
     scene.add(particleSystem);
 
 
@@ -306,12 +306,14 @@ function init(){
     loadObjects3d(objects, 0, manager);
 }
 
+var stats;
+
 function start_the_world() {
     ws.send(me + ':' + avatar);
     animate();
 
-    var stats = new Stats();
-    stats.setMode(1); // 0: fps, 1: ms
+    stats = new Stats();
+    stats.setMode(0); // 0: fps, 1: ms
 
     // Align top-left
     stats.domElement.style.position = 'absolute';
@@ -320,27 +322,21 @@ function start_the_world() {
 
     document.body.appendChild( stats.domElement );
 
-    setInterval( function () {
 
-        stats.begin();
-
-        // your code goes here
-
-        stats.end();
-
-    }, 1000 / 60 );
 
 }
 
 var clock = new THREE.Clock();
 
-function animate()
-{
+function animate() {
     setTimeout( function() {
+        stats.begin();
         requestAnimationFrame( animate );
+        render();
+        update();
+
+        stats.end();
     }, 1000 / 30 );
-    render();
-    update();
 }
 
 var use_eagle_camera = true;
