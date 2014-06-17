@@ -2,8 +2,8 @@ var ws;
 
 var hud = document.getElementById("hud");
 
-var ARENA_WIDTH = 800;
-var ARENA_HEIGHT = 600;
+var ARENA_WIDTH = window.innerWidth;
+var ARENA_HEIGHT = window.innerHeight;
 
 var hud_pos = 0;
 
@@ -399,24 +399,24 @@ function update(td) {
 
 	    var is_moving = false;
 
-        if (keyboard.pressed("right")){
+        if (keyboard.pressed("d")){
             ws.send(me + ":rr");
             rotating = true;
 		    is_moving = true;
         }
-        else if (keyboard.pressed("left")){
+        else if (keyboard.pressed("a")){
             ws.send(me + ":rl");
             rotating = true;
 		    is_moving = true;
         }
 
 
-        if (!rotating && keyboard.pressed("up")){
+        if (!rotating && keyboard.pressed("w")){
             ws.send(me + ":fw");
 		    is_moving = true;
         }
 
-        if (!rotating && keyboard.pressed("down")){
+        if (!rotating && keyboard.pressed("s")){
             ws.send(me + ":bw");
 		    is_moving = true;
         }

@@ -209,12 +209,20 @@ h2.winner{
     border: solid 2px;
     position: absolute;
     top: 500;
-    left: 300;
+    margin-left: calc(50% - 100px);
+    /* Firefox */
+    margin-left: -moz-calc(50% - 100px);
+    /* WebKit */
+    margin-left: -webkit-calc(50% - 100px);
+    /* Opera */
+    margin-left: -o-calc(50% - 100px);
+    /* Standard */
+    margin-left: calc(50% - 100px);
     height: 30px;
     width: 200px;
     background-color: black;
     z-index: 900;
-    opacity: 0.5;
+    opacity: 0.4;
 }
 
 #health {
