@@ -214,29 +214,29 @@ class Arena(object):
             player.arena_object.rotateL()
             return True
 
-        if cmd == 'rr':
+        else if cmd == 'rr':
             player.arena_object.rotateR()
             return True
 
-        if cmd == 'fw':
+        else if cmd == 'fw':
             old_x = player.arena_object.x
             old_y = player.arena_object.y
             player.arena_object.translate(player.arena_object.speed)
-            if (self.collision(player)):
-                player.arena_object.x = old_x
-                player.arena_object.y = old_y
-                player.arena_object.translate(-player.arena_object.speed)
-            return True
+            if not self.collision(player):
+                return True
+            player.arena_object.x = old_x
+            player.arena_object.y = old_y
+            # player.arena_object.translate(-player.arena_object.speed)
 
-        if cmd == 'bw':
+        else if cmd == 'bw':
             old_x = player.arena_object.x
             old_y = player.arena_object.y
             player.arena_object.translate(-player.arena_object.speed)
-            if (self.collision(player)):
-                player.arena_object.x = old_x
-                player.arena_object.y = old_y
-                player.arena_object.translate(player.arena_object.speed)
-            return True
+            if not self.collision(player):
+                return True
+            player.arena_object.x = old_x
+            player.arena_object.y = old_y
+            # player.arena_object.translate(player.arena_object.speed)
 
         return False
 

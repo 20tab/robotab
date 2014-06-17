@@ -25,7 +25,9 @@ var health;
 var particles, particleSystem;
 var particleCount = 500;
 
+var playerParticleSystem, playerPart;
 
+var shootingEngines = [];
 
 var objects = [
     {texture: 'ROBO_01_TEXTURE.jpg', object: 'ROBO_01_OK.obj', ref: undefined},
@@ -58,7 +60,6 @@ for (i in avatars) {
 
 function ws_recv(e) {
      //console.log(e.data);
-    console.log(e.data);
     var items = e.data.split(':');
     if (items[0] == 'arena') {
         var args = items[1].split(',');
@@ -93,7 +94,7 @@ function ws_recv(e) {
         player.bullet.ws['x'] = args[1];
         player.bullet.ws['y'] = args[2];
         player.bullet.ws['z'] = args[3];
-        player.bullet.ws['R'] = args[4];
+        player.bullet.ws['R'] = parseFloat(args[4]);
         player.bullet.dirty = true;
         return;
     }
@@ -274,19 +275,19 @@ function init(){
 
     for (var p = 0; p < particleCount; p++) {
 
-      // create a particle with random
-      // position values, -2000 -> 2000
-      var pX = Math.random() * 4000 - 2000,
-          pY = Math.random() * 300,
-          pZ = Math.random() * 4000 - 2000,
-          particle = new THREE.Vector3(pX, pY, pZ);
+        // create a particle with random
+        // position values, -2000 -> 2000
+        var pX = Math.random() * 4000 - 2000,
+            pY = Math.random() * 300,
+            pZ = Math.random() * 4000 - 2000,
+            particle = new THREE.Vector3(pX, pY, pZ);
 
-      // add it to the geometry
-      particles.vertices.push(particle);
-      particle.velocity = new THREE.Vector3(
-        0,              // x
-        -Math.random(), // y: random vel
-        0);
+        // add it to the geometry
+        particles.vertices.push(particle);
+        particle.velocity = new THREE.Vector3(
+            0,              // x
+            -Math.random(), // y: random vel
+            0);
     }
     particleSystem = new THREE.ParticleSystem(
     particles,
@@ -295,8 +296,9 @@ function init(){
     particleSystem.sortParticles = true;
     particleSystem.visible = false;
     // add it to the scene
-    scene.add(particleSystem);
+    // scene.add(particleSystem);
 
+    // Create a particle group to add the emitter to.
 
     var manager = new THREE.LoadingManager();
     manager.onProgress = function ( item, loaded, total ) {
@@ -321,9 +323,6 @@ function start_the_world() {
     stats.domElement.style.top = '600px';
 
     document.body.appendChild( stats.domElement );
-
-
-
 }
 
 var clock = new THREE.Clock();
@@ -331,9 +330,10 @@ var clock = new THREE.Clock();
 function animate() {
     setTimeout( function() {
         stats.begin();
+
         requestAnimationFrame( animate );
         render();
-        update();
+        update(clock.getDelta());
 
         stats.end();
     }, 1000 / 30 );
@@ -358,7 +358,7 @@ function render() {
     }
 }
 
-function update() {
+function update(td) {
     // console.log('update');
     var rotating = false;
     if (can_use_keyboard){
@@ -448,11 +448,15 @@ function update() {
         		document.getElementById('fire').play();
             }
             player.bullet.dirty = false;
+
             if (player.bullet.ws['R'] <= 0) {
                 //player.bullet.children[0].visible = false;
                 player.bullet.visible = false;
-		        document.getElementById('fire').pause();
+                document.getElementById('fire').pause();
                 return;
+            }
+            else if (player.bullet.ws['R'] >= player.last_bullet){
+                player.engineGroup.triggerPoolEmitter( 1, new THREE.Vector3( 0, 3, 10) );
             }
             //player.bullet.children[0].visible = true;
             player.bullet.visible = true;
@@ -460,6 +464,7 @@ function update() {
             player.bullet.position.x = player.bullet.ws['x'];
             player.bullet.position.y = player.bullet.ws['y'];
             player.bullet.position.z = player.bullet.ws['z'];
+            player.last_bullet = player.bullet.ws['R'];
         }
 
         if (player.dirty) {
@@ -522,8 +527,7 @@ function update() {
             particle.velocity.y -= Math.random() * .1;
 
             // and the position
-            particle.add(
-                particle.velocity);
+            particle.add(particle.velocity);
         }
 
         // flag to the particle system
@@ -531,6 +535,9 @@ function update() {
         particleSystem.geometry.__dirtyVertices = true;
     }
 
+    for(i in shootingEngines){
+        shootingEngines[i].tick(td);
+    }
 }
 
 function add_player(name, avatar, x, y, z, r, scale, color) {
@@ -548,10 +555,52 @@ function add_player(name, avatar, x, y, z, r, scale, color) {
     players[name].energy = 100.0;
     players[name].name_and_energy = name + ': 100.0';
     players[name].bonus = '';
-    //players[name].castShadow = true;
-    //players[name].receiveShadow = true;
+    players[name].last_bullet = 0;
+    // Create a single Emitter
 
-    //var bullet = objects[2].ref.clone();
+    var playerEngineGroup = new SPE.Group({
+        // Give the particles in this group a texture
+        texture: THREE.ImageUtils.loadTexture('particle.png'),
+        blending: THREE.AdditiveBlending,
+        // How long should the particles live for? Measured in seconds.
+        maxAge: 0.1,
+    });
+
+    var emitterSettings = {
+        type: 'sphere',
+        radius: 1,
+        speed: 100,
+
+        accelerationSpread: new THREE.Vector3(
+            Math.random(),
+            Math.random(),
+            Math.random()
+        ),
+
+        velocitySpread: new THREE.Vector3(
+            Math.random(),
+            Math.random(),
+            Math.random()
+        ),
+        particlesPerSecond: 100,
+        sizeStart: 2,
+        sizeEnd: 0,
+        opacityStart: 1,
+        opacityEnd: 0,
+        colorStart: new THREE.Color(parseInt(color)),
+        colorEnd: new THREE.Color('white'),
+        alive: 0,
+        duration: 0.1
+    };
+
+    players[name].engineGroup = playerEngineGroup;
+    playerEngineGroup.addPool( 10, emitterSettings, true );
+
+    scene.add(playerEngineGroup.mesh);
+
+    shootingEngines.push(playerEngineGroup);
+    players[name].add(playerEngineGroup.mesh);
+
     var geometry = new THREE.SphereGeometry( 3, 32, 32 );
     var material = new THREE.MeshPhongMaterial({ transparent: true, opacity: 0.7});
     material.color.setHex(color);
@@ -600,15 +649,6 @@ function add_player(name, avatar, x, y, z, r, scale, color) {
         health = document.getElementById('health');
         particleSystem.visible = true;
 
-        // healthbar_context.fillStyle = "Red";
-        // healthbar_context.font = "18px sans-serif";
-        // healthbar_context.fillText("Life " + players[name].energy +"/"+ 100 +" = " + 1 * 100 +"%", 20, 20);
-
-        // healthbar_context.fillStyle = "black";
-        // healthbar_context.fillRect(300 , 500, 200, 20);
-
-        // healthbar_context.fillStyle = "red";
-        // healthbar_context.fillRect(300, 500, 200, 20);
     }
 
     players[name].position.x = parseFloat(x);
@@ -724,6 +764,7 @@ function go_fullscreen() {
 function loadObjects3d(objects3d, index, manager){
     if (index >= objects3d.length){
         objects[3].ref.children[0].material.transparent = true;
+        // objects[3].ref.frustumCulled = false;
         start_websocket();
         return;
     }
