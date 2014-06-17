@@ -320,9 +320,9 @@ function start_the_world() {
     // Align top-left
     stats.domElement.style.position = 'absolute';
     stats.domElement.style.left = '0px';
-    stats.domElement.style.top = '600px';
-
-    document.body.appendChild( stats.domElement );
+    stats.domElement.style.bottom = '0px';
+    document.getElementById('ThreeJS').appendChild(stats.domElement);
+    //document.body.appendChild( stats.domElement );
 }
 
 var clock = new THREE.Clock();
