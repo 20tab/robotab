@@ -214,29 +214,29 @@ class Arena(object):
             player.arena_object.rotateL()
             return True
 
-        if cmd == 'rr':
+        elif cmd == 'rr':
             player.arena_object.rotateR()
             return True
 
-        if cmd == 'fw':
+        elif cmd == 'fw':
             old_x = player.arena_object.x
             old_y = player.arena_object.y
             player.arena_object.translate(player.arena_object.speed)
-            if (self.collision(player)):
-                player.arena_object.x = old_x
-                player.arena_object.y = old_y
-                player.arena_object.translate(-player.arena_object.speed)
-            return True
+            if not self.collision(player):
+                return True
+            player.arena_object.x = old_x
+            player.arena_object.y = old_y
+            # player.arena_object.translate(-player.arena_object.speed)
 
-        if cmd == 'bw':
+        elif cmd == 'bw':
             old_x = player.arena_object.x
             old_y = player.arena_object.y
             player.arena_object.translate(-player.arena_object.speed)
-            if (self.collision(player)):
-                player.arena_object.x = old_x
-                player.arena_object.y = old_y
-                player.arena_object.translate(player.arena_object.speed)
-            return True
+            if not self.collision(player):
+                return True
+            player.arena_object.x = old_x
+            player.arena_object.y = old_y
+            # player.arena_object.translate(player.arena_object.speed)
 
         return False
 
@@ -249,7 +249,7 @@ class Arena(object):
                 self.players[p].arena_object.x,
                 self.players[p].arena_object.y,
                 self.players[p].arena_object.width * self.players[p].arena_object.scale,
-                self.players[p].arena_object.height * self.players[p].arena_object.scale,
+                self.players[p].arena_object.height * self.players[p].arena_object.scale
             ):
                 # if player.attack == 1:
                 #     if self.players[p].attack == 0:
@@ -258,7 +258,7 @@ class Arena(object):
                 #         self.players[p].damage(1.0, player.name)
                 # elif self.players[p]. attack == 1:
                 #     player.damage(1.0, 'himself')
-                self.broadcast("collision between {} and {}".format(player.name, p))
+                # self.broadcast("collision between {} and {}".format(player.name, p))
                 return True
         for wall in self.walls:
             if wall[6] == 0:
