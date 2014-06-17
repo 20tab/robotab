@@ -10,10 +10,11 @@ body {
 
 #hud {
     position: absolute;
-    left:0px;
-    top:0px;
-    z-index:1000;
-    color:white;
+    left: 20px;
+    top: 20px;
+    z-index: 1000;
+    font: 20px Impact;
+    color: white;
 }
 
 #username_div {
@@ -110,8 +111,8 @@ h2.winner{
 #arrows{
     position: absolute;
     bottom:250;
-    right: 250;
-    opacity: 0.7;
+    right: 175;
+    opacity: 0.6;
 }
 
 .arrow {
@@ -208,7 +209,7 @@ h2.winner{
 #healthbar {
     border: solid 2px;
     position: absolute;
-    top: 500;
+    bottom: 125;
     margin-left: calc(50% - 100px);
     /* Firefox */
     margin-left: -moz-calc(50% - 100px);
@@ -222,7 +223,7 @@ h2.winner{
     width: 200px;
     background-color: black;
     z-index: 900;
-    opacity: 0.4;
+    opacity: 0.6;
 }
 
 #health {
@@ -230,4 +231,12 @@ h2.winner{
     height: 30px;
     width: 200px;
     background-color: red;
+}
+
+.players_energy{
+    line-height:150px;
+    font:20px Impact;
+    color:red;
+    position:absolute;
+    margin-left:70%;
 }

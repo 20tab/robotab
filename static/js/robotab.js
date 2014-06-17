@@ -5,7 +5,7 @@ var hud = document.getElementById("hud");
 var ARENA_WIDTH = window.innerWidth;
 var ARENA_HEIGHT = window.innerHeight;
 
-var hud_pos = 0;
+var hud_pos = 20;
 
 var scene, camera, eagleCamera, backCamera, renderer, backgroundScene, backgroundCamera;
 var keyboard;
@@ -109,7 +109,7 @@ function ws_recv(e) {
             while(huds.length > 0){
                 huds[0].parentNode.removeChild(huds[0]);
             }
-            hud_pos = 0;
+            hud_pos = 20;
         }
         else if (args[0] == 'loser'){
             players[args[1]].name_and_energy = players[args[1]].name + ': Dead';
@@ -296,9 +296,7 @@ function init(){
     particleSystem.sortParticles = true;
     particleSystem.visible = false;
     // add it to the scene
-    // scene.add(particleSystem);
-
-    // Create a particle group to add the emitter to.
+    scene.add(particleSystem);
 
     var manager = new THREE.LoadingManager();
     manager.onProgress = function ( item, loaded, total ) {
@@ -619,11 +617,11 @@ function add_player(name, avatar, x, y, z, r, scale, color) {
 
     var player_hud = document.createElement('div');
     player_hud.id = 'player_' + name;
-    player_hud.setAttribute('style', "color: red;position:absolute;left:800px;top:" + hud_pos + "px");
+    player_hud.setAttribute('style', "top:" + hud_pos + "px");
     player_hud.className = 'players_energy';
     hud_pos += 20;
 
-    document.getElementsByTagName('body')[0].appendChild(player_hud);
+    document.getElementById('ThreeJS').appendChild(player_hud);
     players[name].hud = player_hud;
 
     draw_hud_div(players[name]);
