@@ -214,11 +214,11 @@ class Arena(object):
             player.arena_object.rotateL()
             return True
 
-        else if cmd == 'rr':
+        elif cmd == 'rr':
             player.arena_object.rotateR()
             return True
 
-        else if cmd == 'fw':
+        elif cmd == 'fw':
             old_x = player.arena_object.x
             old_y = player.arena_object.y
             player.arena_object.translate(player.arena_object.speed)
@@ -228,7 +228,7 @@ class Arena(object):
             player.arena_object.y = old_y
             # player.arena_object.translate(-player.arena_object.speed)
 
-        else if cmd == 'bw':
+        elif cmd == 'bw':
             old_x = player.arena_object.x
             old_y = player.arena_object.y
             player.arena_object.translate(-player.arena_object.speed)

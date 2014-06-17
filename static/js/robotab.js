@@ -336,7 +336,7 @@ function animate() {
         update(clock.getDelta());
 
         stats.end();
-    }, 1000 / 30 );
+    }, 1000.0 / 33.33 );
 }
 
 var use_eagle_camera = true;
