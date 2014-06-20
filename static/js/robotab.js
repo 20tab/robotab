@@ -30,13 +30,13 @@ var playerParticleSystem, playerPart;
 var shootingEngines = [];
 
 var objects = [
-    {texture: 'ROBO_01_TEXTURE.jpg', object: 'ROBO_01_OK.obj', ref: undefined},
-    {texture: 'ROBO_02_TEXTURE.jpg', object: 'ROBO_02_OK.obj', ref: undefined},
-    {texture: 'missile_texture.jpg', object: 'missile.obj'   , ref: undefined},
-    {texture: 'muro_texture.jpg'   , object: 'muro.obj'      , ref: undefined},
-    {texture: undefined            , object: 'power.obj'     , ref: undefined, color:0xFF0000},
-    {texture: undefined            , object: 'heal.obj'      , ref: undefined, color:0x00FF00},
-    {texture: undefined            , object: 'haste.obj'     , ref: undefined, color:0x0000FF},
+    {texture: 'static/img/ROBO_01_TEXTURE.jpg', object: 'static/obj/ROBO_01_OK.obj', ref: undefined},
+    {texture: 'static/img/ROBO_02_TEXTURE.jpg', object: 'static/obj/ROBO_02_OK.obj', ref: undefined},
+    {texture: 'static/img/missile_texture.jpg', object: 'static/obj/missile.obj'   , ref: undefined},
+    {texture: 'static/img/muro_texture.jpg'   , object: 'static/obj/muro.obj'      , ref: undefined},
+    {texture: undefined                       , object: 'static/obj/power.obj'     , ref: undefined, color:0xFF0000},
+    {texture: undefined                       , object: 'static/obj/heal.obj'      , ref: undefined, color:0x00FF00},
+    {texture: undefined                       , object: 'static/obj/haste.obj'     , ref: undefined, color:0x0000FF},
 ];
 
 var avatars = document.getElementsByClassName('choose_player');
@@ -193,7 +193,7 @@ function init(){
     //var ambient = new THREE.AmbientLight(0x333333);
     //scene.add(ambient);
 
-    var floorTexture = new THREE.ImageUtils.loadTexture( 'panel35.jpg' );
+    var floorTexture = new THREE.ImageUtils.loadTexture( 'static/img/panel35.jpg' );
     floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
     floorTexture.repeat.set( 10, 10 );
     var floorMaterial = new THREE.MeshPhongMaterial( { map: floorTexture , side: THREE.DoubleSide } );
@@ -242,7 +242,7 @@ function init(){
         scene.add(spotlight);
 
 
-    var Ltexture = THREE.ImageUtils.loadTexture('nebula.jpg');
+    var Ltexture = THREE.ImageUtils.loadTexture('static/img/nebula.jpg');
     var backgroundMesh = new THREE.Mesh(
         new THREE.PlaneGeometry(2, 2, 0),
         new THREE.MeshBasicMaterial({map: Ltexture})
@@ -263,7 +263,7 @@ function init(){
         color: 0xFFFFFF,
         size: 1,
         map: THREE.ImageUtils.loadTexture(
-            "particle.png"
+            "static/img/particle.png"
         ),
         blending: THREE.AdditiveBlending,
         transparent: true
@@ -554,7 +554,7 @@ function add_player(name, avatar, x, y, z, r, scale, color) {
 
     var playerEngineGroup = new SPE.Group({
         // Give the particles in this group a texture
-        texture: THREE.ImageUtils.loadTexture('particle.png'),
+        texture: THREE.ImageUtils.loadTexture('static/img/particle.png'),
         blending: THREE.AdditiveBlending,
         // How long should the particles live for? Measured in seconds.
         maxAge: 0.1,

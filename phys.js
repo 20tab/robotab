@@ -44,7 +44,7 @@
 
 	scene.add(floor);
 
-	var texture = THREE.ImageUtils.loadTexture( 'crate.gif');
+	var texture = THREE.ImageUtils.loadTexture( '/static/img/crate.gif');
 
         var ws = new WebSocket('ws://localhost:9090/phys');
         ws.onmessage = function(e) {
