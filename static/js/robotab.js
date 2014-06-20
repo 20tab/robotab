@@ -139,18 +139,14 @@ function ws_recv(e) {
         return;
     }
 
-    if (items[0] == 'walls'){
-        var wall_list = items[1].split(';');
-        for (var i = 0; i < wall_list.length; i++){
-            var args = wall_list[i].split(',');
-            add_wall(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
-        }
+    if (items[0] == 'wall'){
+        var args = items[1].split(',');
+        add_wall(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
         return;
     }
 
     if (items[0] == 'posters') {
         posters = items[1].split(';');
-        // console.log(posters);
         return;
     }
 

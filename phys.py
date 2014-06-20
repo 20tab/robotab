@@ -9,8 +9,8 @@ class Box(object):
     def __init__(self, name, world, weight, size):
         self.body = ode.Body(world.world)
         M = ode.Mass()
-        M.setBox(7900, size, size, size)
-        M.mass = weight / 9.81
+        M.setBox(2500, size, size, size)
+        M.mass = weight
         self.body.setMass(M)
         self.geom = ode.GeomBox(world.space, lengths=(size, size, size))
         self.geom.setBody(self.body)
@@ -64,7 +64,7 @@ class World(object):
         self.channel = self.redis_pubsub.pubsub()
         self.channel.subscribe('phys')
         self.redis_fd = self.channel.connection._sock.fileno()
-        self.floor = ode.GeomPlane(self.space, (0,1,0), -4)
+        self.floor = ode.GeomPlane(self.space, (0,1,0), 0)
 
 def near_callback(args, geom1, geom2):
     contacts = ode.collide(geom1, geom2)
@@ -95,7 +95,7 @@ def application(e, sr):
         uwsgi.websocket_handshake()
 
         w = World()
-        me = Box('box0', w, 80, 200)
+        me = Box('box0', w, 900, 200)
         me.set_pos(0, 1150, 0)
         box1 = Box('box1', w, 20, 50)
         box1.set_pos(0, 250, 0)

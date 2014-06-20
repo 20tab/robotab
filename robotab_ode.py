@@ -18,7 +18,15 @@ class Arena(object):
             'start': self.start
         }
 
-        self.posters = ['posters/robbo.jpg', 'posters/raffo.jpg', 'posters/unbit.jpg', 'posters/20tab.jpg', 'posters/beri.jpg', 'posters/pycon.jpg']
+        self.posters = [
+            'posters/robbo.jpg',
+            'posters/raffo.jpg',
+            'posters/unbit.jpg',
+            'posters/20tab.jpg',
+            'posters/beri.jpg',
+            'posters/pycon.jpg'
+        ]
+
         self.animations = []
         self.players = {}
         self.waiting_players = []
@@ -49,7 +57,7 @@ class Arena(object):
         )
 
         self.spawn_points = (
-            #    x,     y,               r
+            #    x,     y,               r,    color
             #(    0,  1650,         math.pi),
             #(    0, -1650,               0),
             ( -935,   935, 3 * math.pi / 4, 0x7777AA),
@@ -65,21 +73,21 @@ class Arena(object):
 
         )
         self.world = ode.World()
-        self.world.setGravity( (0,-9.81,0) )
+        self.world.setGravity((0, -9.81, 0))
         self.space = ode.Space()
-        self.floor = ode.GeomPlane(self.space, (0,0,0), 0)
+        self.floor = ode.GeomPlane(self.space, (0, 0, 1), 0)
         self.contactgroup = ode.JointGroup()
         self.arena = "arena{}".format(uwsgi.worker_id())
         self.redis = redis.StrictRedis()
         self.channel = self.redis.pubsub()
         self.channel.subscribe(self.arena)
 
-        self.bonus_malus = (
-            BonusHaste,
-            # BonusGiant,
-            BonusPower,
-            BonusHeal,
-        )
+        # self.bonus_malus = (
+        #     BonusHaste,
+        #     # BonusGiant,
+        #     BonusPower,
+        #     BonusHeal,
+        # )
 
         self.bonus_malus_spawn_points = [
             (    0,     0),
@@ -98,7 +106,7 @@ class Arena(object):
         contacts = ode.collide(geom1, geom2)
 
         # Create contact joints
-        world,contactgroup = args
+        world, contactgroup = args
         for c in contacts:
             c.setBounce(0.2)
             c.setMu(5000)
@@ -123,11 +131,13 @@ class Arena(object):
             return True
 
         if cmd == 'fw':
-            player.body.addForce((0.0, 0.0, 1.0))
+            print('fw')
+            player.body.addForce((0.0, 0.0, 100.0))
             return True
 
         if cmd == 'bw':
-            player.body.addForce((0.0, 0.0, -1.0))
+            print("bw")
+            player.body.addForce((0.0, 0.0, -100.0))
             return True
 
         return False
@@ -136,17 +146,18 @@ class Arena(object):
         del self.greenlets['engine']
         print('engine started')
         while True:
-            if (len(self.players) == 1 and self.started):
+            if len(self.players) == 1 and self.started:
                 self.finished = True
                 self.winning_logic()
                 self.restart_game(11)
                 break
-            elif (len(self.players) == 0):
+            elif len(self.players) == 0:
                 self.finished = True
                 self.restart_game()
                 break
             t = uwsgi.micros() / 1000.0
-            self.space.collide((self.world,self.contactgroup), self.near_callback)
+            self.space.collide(
+                (self.world, self.contactgroup), self.near_callback)
             for p in self.players.keys():
                 player = self.players[p]
                 if player.cmd:
@@ -155,7 +166,7 @@ class Arena(object):
                     if draw:
                         player.update_gfx()
                     player.cmd = None
-            self.world.step(1.0/30)
+            self.world.step(1.0/30.0)
             t1 = uwsgi.micros() / 1000.0
             delta = t1 - t
             if delta < 33.33:
@@ -193,10 +204,10 @@ class Arena(object):
         bm_counter = 0
         while not self.finished:
             gevent.sleep(10.0)
-            if len(self.bonus_malus_spawn_points) > 0:
-                coordinates = self.bonus_malus_spawn_points.pop(randrange(len(self.bonus_malus_spawn_points)))
-                choice(self.bonus_malus)(self, bm_counter, *(coordinates))
-                bm_counter += 1
+            # if len(self.bonus_malus_spawn_points) > 0:
+            #     coordinates = self.bonus_malus_spawn_points.pop(randrange(len(self.bonus_malus_spawn_points)))
+            #     choice(self.bonus_malus)(self, bm_counter, *(coordinates))
+            #     bm_counter += 1
         gevent.sleep(1.0)
         self.broadcast("end")
         self.started = False
@@ -220,7 +231,8 @@ class Arena(object):
     def restart_game(self, countdown=15):
         countdown = countdown
         while countdown > 0:
-            self.broadcast('next game will start in {} seconds'.format(countdown))
+            self.broadcast(
+                'next game will start in {} seconds'.format(countdown))
             gevent.sleep(1)
             countdown -= 1
         self.finished = False
@@ -243,14 +255,14 @@ class Player(object):
 
         self.body = ode.Body(self.game.world)
         M = ode.Mass()
-        M.setSphere(2500.0, 8.0) 
+        M.setSphere(2500.0, 8.0)
         M.mass = 900.0
         self.body.setMass(M)
-        self.geom =  ode.GeomSphere(game.space, 8.0)
-        self.geom.setBody(self.body) 
+        self.geom = ode.GeomSphere(game.space, 8.0)
+        self.geom.setBody(self.body)
 
         #self.arena_object = ArenaObject(x, y, r, speed)
-        self.body.setPosition((x, 10.0, y))
+        self.body.setPosition((x, 100.0, y))
         self.r = r
 
         self.attack = 0
@@ -263,12 +275,13 @@ class Player(object):
         self.redis_fd = self.channel.connection._sock.fileno()
 
         self.cmd = None
-        self.bullet = Bullet(self.game, self)
+        # self.bullet = Bullet(self.game, self)
         self.color = color
 
         # check if self.energy is 0, in such a case
         # trigger the kill procedure removing the player from the list
-        # if after the death a single player remains, trigger the winning procedure
+        # if after the death a single player remains,
+        # trigger the winning procedure
     def damage(self, amount, attacker):
         if not self.game.started:
             return
@@ -289,7 +302,7 @@ class Player(object):
         self.redis.publish(self.arena, msg)
 
     def update_gfx(self):
-        x,y,z = self.body.getPosition()
+        x, y, z = self.body.getPosition()
         msg = "{}:{},{},{},{},{},{},{},{},{}".format(
             self.name,
             self.r,
@@ -307,7 +320,9 @@ class Player(object):
         self.send_all(msg)
 
     def wait_for_game(self):
-        while self.game.started or self.game.finished or self.name not in self.game.players:
+        print("wait for game")
+        while (self.game.started or self.game.finished or
+               self.name not in self.game.players):
             gevent.sleep(1)
             try:
                 uwsgi.websocket_recv_nb()
@@ -341,13 +356,16 @@ class Robotab(Arena):
 
             uwsgi.websocket_send('posters:{}'.format(';'.join(self.posters)))
             uwsgi.websocket_send('walls:{}'.format(str(self.walls).replace('),', ';').translate(None, "()")))
-            print self.world
-            player = Player(self, username, avatar, uwsgi.connection_fd(), *robot_coordinates)
+            player = Player(self, username, avatar,
+                            uwsgi.connection_fd(), *robot_coordinates)
 
-            if self.started or self.finished or len(self.players) > self.max_players or len(self.waiting_players) > 0:
-                print('{}:{}:{}:{}'.format(self.started, self.finished, len(self.players) > self.max_players, len(self.waiting_players) > 0))
+            if(self.started or self.finished or
+               len(self.players) > self.max_players or
+               len(self.waiting_players) > 0):
+                # print('{}:{}:{}:{}'.format(self.started, self.finished, len(self.players) > self.max_players, len(self.waiting_players) > 0))
                 self.waiting_players.append(player)
-                uwsgi.websocket_send("arena:hey {}, wait for next game".format(player.name))
+                uwsgi.websocket_send(
+                    "arena:hey {}, wait for next game".format(player.name))
                 player.wait_for_game()
                 self.waiting_players.remove(player)
             else:
@@ -359,11 +377,10 @@ class Robotab(Arena):
                 self.players[p].update_gfx()
 
             while True:
-                ready = gevent.select.select([player.fd, player.redis_fd], [], [], timeout=4.0)
-
+                ready = gevent.select.select(
+                    [player.fd, player.redis_fd], [], [], timeout=4.0)
                 if not ready[0]:
                     uwsgi.websocket_recv_nb()
-
                 for fd in ready[0]:
                     if fd == player.fd:
                         try:

@@ -55,12 +55,15 @@ class Bonus(object):
         self.type = type
         self.arena_object = ArenaObject(x, y, 0, 0)
         self.game.active_bonus_malus.append(self)
-        self.game.broadcast('bm,{},{},{},{},{}'.format(self.id, self.type, self.arena_object.x, 50, self.arena_object.y))
+        self.game.broadcast('bm,{},{},{},{},{}'.format(
+            self.id, self.type, self.arena_object.x, 50, self.arena_object.y))
 
     def activate_bonus(self, player):
         self.game.active_bonus_malus.remove(self)
-        self.game.broadcast('bm,gv,{},{},{}'.format(self.id, self.type, player.name))
-        self.game.bonus_malus_spawn_points.append((self.arena_object.x, self.arena_object.y))
+        self.game.broadcast(
+            'bm,gv,{},{},{}'.format(self.id, self.type, player.name))
+        self.game.bonus_malus_spawn_points.append(
+            (self.arena_object.x, self.arena_object.y))
 
 
 class TimerBonus(Bonus):
@@ -114,7 +117,15 @@ class Arena(object):
             'start': self.start
         }
 
-        self.posters = ['posters/robbo.jpg', 'posters/raffo.jpg', 'posters/unbit.jpg', 'posters/20tab.jpg', 'posters/beri.jpg', 'posters/pycon.jpg']
+        self.posters = [
+            'posters/robbo.jpg',
+            'posters/raffo.jpg',
+            'posters/unbit.jpg',
+            'posters/20tab.jpg',
+            'posters/beri.jpg',
+            'posters/pycon.jpg'
+        ]
+
         self.animations = []
         self.players = {}
         self.waiting_players = []
@@ -190,10 +201,13 @@ class Arena(object):
 
     def msg_handler(self, player, msg):
         p, cmd = msg.split(':')
-        if cmd in ('at', 'AT'):
-            self.players[p].attack_cmd = cmd
-        else:
-            self.players[p].cmd = cmd
+        try:
+            if cmd in ('at', 'AT'):
+                self.players[p].attack_cmd = cmd
+            else:
+                self.players[p].cmd = cmd
+        except KeyError:
+            print 'Player {} does not exists or is dead'.format(p)
 
     def attack_cmd_handler(self, player, cmd):
         if cmd == 'AT':
@@ -211,29 +225,29 @@ class Arena(object):
             player.arena_object.rotateL()
             return True
 
-        if cmd == 'rr':
+        elif cmd == 'rr':
             player.arena_object.rotateR()
             return True
 
-        if cmd == 'fw':
+        elif cmd == 'fw':
             old_x = player.arena_object.x
             old_y = player.arena_object.y
             player.arena_object.translate(player.arena_object.speed)
-            if (self.collision(player)):
-                player.arena_object.x = old_x
-                player.arena_object.y = old_y
-                player.arena_object.translate(-player.arena_object.speed)
-            return True
+            if not self.collision(player):
+                return True
+            player.arena_object.x = old_x
+            player.arena_object.y = old_y
+            # player.arena_object.translate(-player.arena_object.speed)
 
-        if cmd == 'bw':
+        elif cmd == 'bw':
             old_x = player.arena_object.x
             old_y = player.arena_object.y
             player.arena_object.translate(-player.arena_object.speed)
-            if (self.collision(player)):
-                player.arena_object.x = old_x
-                player.arena_object.y = old_y
-                player.arena_object.translate(player.arena_object.speed)
-            return True
+            if not self.collision(player):
+                return True
+            player.arena_object.x = old_x
+            player.arena_object.y = old_y
+            # player.arena_object.translate(player.arena_object.speed)
 
         return False
 
@@ -246,7 +260,7 @@ class Arena(object):
                 self.players[p].arena_object.x,
                 self.players[p].arena_object.y,
                 self.players[p].arena_object.width * self.players[p].arena_object.scale,
-                self.players[p].arena_object.height * self.players[p].arena_object.scale,
+                self.players[p].arena_object.height * self.players[p].arena_object.scale
             ):
                 # if player.attack == 1:
                 #     if self.players[p].attack == 0:
@@ -255,7 +269,7 @@ class Arena(object):
                 #         self.players[p].damage(1.0, player.name)
                 # elif self.players[p]. attack == 1:
                 #     player.damage(1.0, 'himself')
-                self.broadcast("collision between {} and {}".format(player.name, p))
+                # self.broadcast("collision between {} and {}".format(player.name, p))
                 return True
         for wall in self.walls:
             if wall[6] == 0:
@@ -343,7 +357,8 @@ class Arena(object):
         while not self.finished:
             gevent.sleep(10.0)
             if len(self.bonus_malus_spawn_points) > 0:
-                coordinates = self.bonus_malus_spawn_points.pop(randrange(len(self.bonus_malus_spawn_points)))
+                coordinates = self.bonus_malus_spawn_points.pop(
+                    randrange(len(self.bonus_malus_spawn_points)))
                 choice(self.bonus_malus)(self, bm_counter, *(coordinates))
                 bm_counter += 1
         gevent.sleep(1.0)
@@ -369,7 +384,8 @@ class Arena(object):
     def restart_game(self, countdown=15):
         countdown = countdown
         while countdown > 0:
-            self.broadcast('next game will start in {} seconds'.format(countdown))
+            self.broadcast(
+                'next game will start in {} seconds'.format(countdown))
             gevent.sleep(1)
             countdown -= 1
         self.finished = False
@@ -408,7 +424,8 @@ class Player(object):
 
         # check if self.energy is 0, in such a case
         # trigger the kill procedure removing the player from the list
-        # if after the death a single player remains, trigger the winning procedure
+        # if after the death a single player remains,
+        # trigger the winning procedure
     def damage(self, amount, attacker):
         if not self.game.started:
             return
@@ -444,7 +461,8 @@ class Player(object):
         self.send_all(msg)
 
     def wait_for_game(self):
-        while self.game.started or self.game.finished or self.name not in self.game.players:
+        while (self.game.started or self.game.finished or
+               self.name not in self.game.players):
             gevent.sleep(1)
             try:
                 uwsgi.websocket_recv_nb()
@@ -461,7 +479,8 @@ class Bullet(object):
     def __init__(self, game, player, damage=10, speed=50, _range=1500.0):
         self.game = game
         self.player = player
-        self.arena_object = ArenaObject(self.player.arena_object.x, self.player.arena_object.y, 0.0, speed)
+        self.arena_object = ArenaObject(
+            self.player.arena_object.x, self.player.arena_object.y, 0.0, speed)
         self.is_shooting = 0
         self._range = _range
         self.damage = damage
@@ -541,13 +560,25 @@ class Robotab(Arena):
                 robot_coordinates = self.spawn_iterator.next()
 
             uwsgi.websocket_send('posters:{}'.format(';'.join(self.posters)))
-            uwsgi.websocket_send('walls:{}'.format(str(self.walls).replace('),', ';').translate(None, "()")))
-            player = Player(self, username, avatar, uwsgi.connection_fd(), *robot_coordinates)
 
-            if self.started or self.finished or len(self.players) > self.max_players or len(self.waiting_players) > 0:
-                print('{}:{}:{}:{}'.format(self.started, self.finished, len(self.players) > self.max_players, len(self.waiting_players) > 0))
+            for wall in self.walls:
+                uwsgi.websocket_send(
+                    'wall:{},{},{},{},{},{},{}'.format(*wall))
+
+            player = Player(self, username, avatar,
+                            uwsgi.connection_fd(), *robot_coordinates)
+
+            if(self.started or self.finished or
+               len(self.players) > self.max_players or
+               len(self.waiting_players) > 0):
+                print('{}:{}:{}:{}'.format(
+                    self.started, self.finished,
+                    len(self.players) > self.max_players,
+                    len(self.waiting_players) > 0))
+
                 self.waiting_players.append(player)
-                uwsgi.websocket_send("arena:hey {}, wait for next game".format(player.name))
+                uwsgi.websocket_send(
+                    "arena:hey {}, wait for next game".format(player.name))
                 player.wait_for_game()
                 self.waiting_players.remove(player)
             else:
@@ -559,7 +590,8 @@ class Robotab(Arena):
                 self.players[p].update_gfx()
 
             while True:
-                ready = gevent.select.select([player.fd, player.redis_fd], [], [], timeout=4.0)
+                ready = gevent.select.select(
+                    [player.fd, player.redis_fd], [], [], timeout=4.0)
 
                 if not ready[0]:
                     uwsgi.websocket_recv_nb()
