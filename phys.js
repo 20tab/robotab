@@ -15,7 +15,7 @@
 
 	console.log(scene);
 
-        var camera = new THREE.PerspectiveCamera(45, ARENA_WIDTH / ARENA_HEIGHT, 0.1, 10000);
+        var camera = new THREE.PerspectiveCamera(45, ARENA_WIDTH / ARENA_HEIGHT, 0.1, 50000);
 	camera.position.z = 2000;
 	var controls = new THREE.OrbitControls( camera );
 	controls.addEventListener( 'change', render );
@@ -35,7 +35,7 @@
 
 
 	var floorMaterial = new THREE.MeshBasicMaterial( { color: 'green' } );
-    	var floorGeometry = new THREE.PlaneGeometry(2000, 2000);
+    	var floorGeometry = new THREE.PlaneGeometry(10000, 10000);
     	var floor = new THREE.Mesh(floorGeometry, floorMaterial);
 	floor.rotation.x = - Math.PI / 2;
 	floor.position.y = 0;
@@ -46,7 +46,7 @@
 
 	var texture = THREE.ImageUtils.loadTexture( '/static/img/crate.gif');
 
-        var ws = new WebSocket('ws://localhost:9090/phys');
+        var ws = new WebSocket('ws://' + window.location.host + '/phys');
         ws.onmessage = function(e) {
                 //console.log(e.data);
                 var items = e.data.split(':')
@@ -54,21 +54,22 @@
                 //console.log(box);
                 var params = items[1].split(',');
                 if (!(box in boxes)) {
-			var material = new THREE.MeshBasicMaterial( { map: texture});
-                        var new_box = new THREE.Mesh(new THREE.BoxGeometry(parseInt(params[3]), parseInt(params[4]), parseInt(params[5])), material);
-			scene.add(new_box);
-			THREE.GeometryUtils.center(new_box.geometry);
-			boxes[box] = new_box;
-			console.log(new_box);
+                    var material = new THREE.MeshBasicMaterial( { map: texture});
+                    var new_box = new THREE.Mesh(new THREE.BoxGeometry(parseInt(params[3]) * 2, parseInt(params[4]) * 2,parseInt(params[5]) * 2), material);
+		          	scene.add(new_box);
+                    THREE.GeometryUtils.center(new_box.geometry);
+                    boxes[box] = new_box;
+                    console.log(new_box);
+        			//new_box.phys_matrix = new THREE.Matrix4();
+
+        			//new_box.matrixAutoUpdate = false;
                 }
 
-		var my_box = boxes[box];
-		my_box.rotation.x = parseFloat(params[6]);
-		my_box.rotation.y = parseFloat(params[7]);
-		my_box.rotation.z = parseFloat(params[8]);
-		my_box.position.x = parseInt(params[0]);
-		my_box.position.y = parseInt(params[1]);
-		my_box.position.z = parseInt(params[2]);
+        		var my_box = boxes[box];
+        		my_box.position.x = parseFloat(params[0]);
+        		my_box.position.y = parseFloat(params[1]);
+        		my_box.position.z = parseFloat(params[2]);
+        		my_box.rotation.setFromQuaternion(new THREE.Quaternion( parseFloat(params[6]), parseFloat(params[7]), parseFloat(params[8]), parseFloat(params[9])));
         };
 
 	animate();
@@ -89,8 +90,19 @@ function update() {
 	//cube.rotation.x += 0.005;
 	//cube.rotation.y += 0.01;
 	if (keyboard.pressed("w")) {
-		console.log('fw');
 		ws.send('fw');
 	}
+
+	else if (keyboard.pressed("d")) {
+                ws.send('rr');
+        }
+
+	else if (keyboard.pressed("a")) {
+                ws.send('rl');
+        }
+
+	else if (keyboard.pressed("s")) {
+                ws.send('bw');
+        }
 }
 

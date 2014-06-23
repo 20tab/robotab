@@ -7,7 +7,26 @@ import gevent.event
 import gevent.select
 import redis
 import math
-import ode
+from bulletphysics import *
+
+
+class Box(object):
+
+    def __init__(self, game, mass, size_x, size_y, size_z, x, y, z, r=0.0, friction=0.8):
+        self.game = game
+        self.mass = mass
+        self.shape = BoxShape(Vector3(size_x, size_y, size_z))
+        self.motion_state = DefaultMotionState(
+            Transform(Quaternion(1, 0, 0, r), Vector3(x, y, z)))
+        self.inertia = Vector3(0, 0, 0)
+        self.shape.calculateLocalInertia(self.mass, self.inertia)
+        construction_info = RigidBodyConstructionInfo(
+            self.mass, self.motion_state, self.shape, self.inertia)
+        construction_info.m_friction = friction
+        self.body = RigidBody(construction_info)
+        self.game.world.addRigidBody(self.body)
+        self.trans = Transform()
+        self.origin = self.trans.getOrigin()
 
 
 class Arena(object):
@@ -36,7 +55,8 @@ class Arena(object):
         self.started = False
         self.finished = False
         #self.warming_up = False
-        self.walls = (
+        self.walls = []
+        self.walls_coordinates = (
             #sc_x,  sc_y,   sc_z,     x,       y,     z,            r
             (200,     100,     50,     0,     150, -1950,            0),
             (200,     100,     50, -1950,     150,     0, -math.pi / 2),
@@ -57,26 +77,48 @@ class Arena(object):
         )
 
         self.spawn_points = (
-            #    x,     y,               r,    color
+            #    x,     y,   z,               r,    color
             #(    0,  1650,         math.pi),
             #(    0, -1650,               0),
-            ( -935,   935, 3 * math.pi / 4, 0x7777AA),
-            (  935,   935, 5 * math.pi / 4, 0x770000),
-            (  935,  -935, 7 * math.pi / 4, 0x007700),
-            ( -935,  -935,     math.pi / 4, 0x777700),
-            (-1650,  1650, 3 * math.pi / 4, 0xAA00AA),
+            ( -935,    50,   935,  3 * math.pi / 4, 0x7777AA),
+            (  935,    50,   935,  5 * math.pi / 4, 0x770000),
+            (  935,    50,  -935,  7 * math.pi / 4, 0x007700),
+            ( -935,    50,  -935,      math.pi / 4, 0x777700),
+            (-1650,    50,  1650,  3 * math.pi / 4, 0xAA00AA),
             #(-1650,     0,     math.pi / 2),
             #( 1650,     0, 3 * math.pi / 2),
-            ( 1650,  1650, 5 * math.pi / 4, 0x007777),
-            ( 1650, -1650, 7 * math.pi / 4, 0x000077),
-            (-1650, -1650,     math.pi / 4, 0xFFAA77),
+            ( 1650,    50,  1650,  5 * math.pi / 4, 0x007777),
+            ( 1650,    50, -1650,  7 * math.pi / 4, 0x000077),
+            (-1650,    50, -1650,      math.pi / 4, 0xFFAA77),
 
         )
-        self.world = ode.World()
-        self.world.setGravity((0, -9.81, 0))
-        self.space = ode.Space()
-        self.floor = ode.GeomPlane(self.space, (0, 0, 1), 0)
-        self.contactgroup = ode.JointGroup()
+
+        self.broadphase = DbvtBroadphase()
+        self.collisionConfiguration = DefaultCollisionConfiguration()
+        self.dispatcher = CollisionDispatcher(self.collisionConfiguration)
+        self.solver = SequentialImpulseConstraintSolver()
+        self.world = DiscreteDynamicsWorld(
+            self.dispatcher, self.broadphase,
+            self.solver, self.collisionConfiguration)
+        self.world.setGravity(Vector3(0, -9.81, 0))
+
+        q = Quaternion(0, 0, 0, 1)
+        self.ground_motion_state = DefaultMotionState(
+            Transform(q, Vector3(0, 1, 0)))
+
+        self.ground_shape = StaticPlaneShape(Vector3(0, 1, 0), 1)
+        construction_info = RigidBodyConstructionInfo(
+            0, self.ground_motion_state, self.ground_shape, Vector3(0, 0, 0))
+        construction_info.m_friction = 0.8
+        self.ground = RigidBody(construction_info)
+
+        self.world.addRigidBody(self.ground)
+
+        for wall_c in self.walls_coordinates:
+            wall = Box(self, 0, wall_c[0], wall_c[1], wall_c[2],
+                       wall_c[3], wall_c[4], wall_c[5], r=wall_c[6])
+            self.walls.append(wall)
+
         self.arena = "arena{}".format(uwsgi.worker_id())
         self.redis = redis.StrictRedis()
         self.channel = self.redis.pubsub()
@@ -101,18 +143,6 @@ class Arena(object):
 
         self.spawn_iterator = iter(self.spawn_points)
 
-    def near_callback(self, args, geom1, geom2):
-        # Check if the objects do collide
-        contacts = ode.collide(geom1, geom2)
-
-        # Create contact joints
-        world, contactgroup = args
-        for c in contacts:
-            c.setBounce(0.2)
-            c.setMu(5000)
-            j = ode.ContactJoint(world, contactgroup, c)
-            j.attach(geom1.getBody(), geom2.getBody())
-
     def broadcast(self, msg):
         self.redis.publish(self.arena, 'arena:{}'.format(msg))
 
@@ -123,21 +153,35 @@ class Arena(object):
 
     def cmd_handler(self, player, cmd):
         if cmd == 'rl':
-            #player.arena_object.rotateL()
+            orientation = player.body.getOrientation()
+            v = Vector3(0, 2000000, 0).rotate(
+                orientation.getAxis(), orientation.getAngle())
+            player.body.activate(True)
+            player.body.applyTorqueImpulse(v)
             return True
 
         if cmd == 'rr':
-            #player.arena_object.rotateR()
+            orientation = player.body.getOrientation()
+            v = Vector3(0, -2000000, 0).rotate(
+                orientation.getAxis(), orientation.getAngle())
+            player.body.activate(True)
+            player.body.applyTorqueImpulse(v)
             return True
 
         if cmd == 'fw':
-            print('fw')
-            player.body.addForce((0.0, 0.0, 100.0))
+            orientation = player.body.getOrientation()
+            v = Vector3(0, 0, 5000).rotate(
+                orientation.getAxis(), orientation.getAngle())
+            player.body.activate(True)
+            player.body.applyCentralImpulse(v)
             return True
 
         if cmd == 'bw':
-            print("bw")
-            player.body.addForce((0.0, 0.0, -100.0))
+            orientation = player.body.getOrientation()
+            v = Vector3(0, 0, -5000).rotate(
+                orientation.getAxis(), orientation.getAngle())
+            player.body.activate(True)
+            player.body.applyCentralImpulse(v)
             return True
 
         return False
@@ -146,6 +190,7 @@ class Arena(object):
         del self.greenlets['engine']
         print('engine started')
         while True:
+            t = uwsgi.micros() / 1000.0
             if len(self.players) == 1 and self.started:
                 self.finished = True
                 self.winning_logic()
@@ -155,9 +200,8 @@ class Arena(object):
                 self.finished = True
                 self.restart_game()
                 break
-            t = uwsgi.micros() / 1000.0
-            self.space.collide(
-                (self.world, self.contactgroup), self.near_callback)
+
+            self.world.stepSimulation(1, 30)
             for p in self.players.keys():
                 player = self.players[p]
                 if player.cmd:
@@ -166,7 +210,6 @@ class Arena(object):
                     if draw:
                         player.update_gfx()
                     player.cmd = None
-            self.world.step(1.0/30.0)
             t1 = uwsgi.micros() / 1000.0
             delta = t1 - t
             if delta < 33.33:
@@ -245,29 +288,23 @@ class Arena(object):
         self.broadcast('waiting for players')
 
 
-class Player(object):
+class Player(Box):
 
-    def __init__(self, game, name, avatar, fd, x, y, r, color, speed=15):
-        self.game = game
+    def __init__(self, game, name, avatar, fd, x, y, z, r, color, scale=5, speed=15):
+        self.size_x = 50
+        self.size_y = 40
+        self.size_z = 70
+        super(Player, self).__init__(game, 900.0, self.size_x, self.size_y, self.size_z, x, y, z, r)
         self.name = name
         self.avatar = avatar
         self.fd = fd
 
-        self.body = ode.Body(self.game.world)
-        M = ode.Mass()
-        M.setSphere(2500.0, 8.0)
-        M.mass = 900.0
-        self.body.setMass(M)
-        self.geom = ode.GeomSphere(game.space, 8.0)
-        self.geom.setBody(self.body)
+        self.last_msg = None
 
-        #self.arena_object = ArenaObject(x, y, r, speed)
-        self.body.setPosition((x, 100.0, y))
-        self.r = r
+        self.scale = scale
 
         self.attack = 0
         self.energy = 100.0
-
         self.arena = "arena{}".format(uwsgi.worker_id())
         self.redis = redis.StrictRedis()
         self.channel = self.redis.pubsub()
@@ -302,22 +339,37 @@ class Player(object):
         self.redis.publish(self.arena, msg)
 
     def update_gfx(self):
-        x, y, z = self.body.getPosition()
-        msg = "{}:{},{},{},{},{},{},{},{},{}".format(
-            self.name,
-            self.r,
-            #self.arena_object.r,
-            x,
-            y,
-            z,
-            self.attack,
-            self.energy,
-            self.avatar,
-            #self.arena_object.scale,
-            8,
-            self.color
+        self.motion_state.getWorldTransform(self.trans)
+        pos_x = self.origin.getX()
+        pos_y = self.origin.getY()
+        pos_z = self.origin.getZ()
+        quaternion = self.trans.getRotation()
+        rot_x = quaternion.getX()
+        rot_y = quaternion.getY()
+        rot_z = quaternion.getZ()
+        rot_w = quaternion.getW()
+        msg = ('{name}:{pos_x},{pos_y},{pos_z:},{size_x},{size_y},'
+               '{size_z},{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},'
+               '{rot_w:.2f},{energy:.1f},{avatar},{scale},{color}').format(
+            name=self.name,
+            pos_x=int(pos_x),
+            pos_y=int(pos_y),
+            pos_z=int(pos_z),
+            rot_x=rot_x,
+            rot_y=rot_y,
+            rot_z=rot_z,
+            rot_w=rot_w,
+            energy=self.energy,
+            avatar=self.avatar,
+            size_x=self.size_x,
+            size_y=self.size_y,
+            size_z=self.size_z,
+            scale=self.scale,
+            color=self.color
         )
-        self.send_all(msg)
+        if msg != self.last_msg:
+            self.send_all(msg)
+            self.last_msg = msg
 
     def wait_for_game(self):
         print("wait for game")
@@ -339,11 +391,11 @@ class Robotab(Arena):
     def __call__(self, e, sr):
         if e['PATH_INFO'] == '/':
             sr('200 OK', [('Content-Type', 'text/html')])
-            return [open('robotab_ws.html').read()]
+            return [open('robotab_bullet.html').read()]
 
-        if e['PATH_INFO'] == '/robotab.js':
+        if e['PATH_INFO'] == '/robotab_bullet.js':
             sr('200 OK', [('Content-Type', 'application/javascript')])
-            return [open('static/js/robotab.js').read()]
+            return [open('static/js/robotab_bullet.js').read()]
 
         if e['PATH_INFO'] == '/robotab':
             uwsgi.websocket_handshake()
@@ -355,14 +407,22 @@ class Robotab(Arena):
                 robot_coordinates = self.spawn_iterator.next()
 
             uwsgi.websocket_send('posters:{}'.format(';'.join(self.posters)))
-            uwsgi.websocket_send('walls:{}'.format(str(self.walls).replace('),', ';').translate(None, "()")))
+
+            for wall in self.walls_coordinates:
+                uwsgi.websocket_send(
+                    'wall:{},{},{},{},{},{},{}'.format(*wall))
+
             player = Player(self, username, avatar,
                             uwsgi.connection_fd(), *robot_coordinates)
 
             if(self.started or self.finished or
                len(self.players) > self.max_players or
                len(self.waiting_players) > 0):
-                # print('{}:{}:{}:{}'.format(self.started, self.finished, len(self.players) > self.max_players, len(self.waiting_players) > 0))
+                print('{}:{}:{}:{}'.format(
+                    self.started, self.finished,
+                    len(self.players) > self.max_players,
+                    len(self.waiting_players) > 0))
+
                 self.waiting_players.append(player)
                 uwsgi.websocket_send(
                     "arena:hey {}, wait for next game".format(player.name))
@@ -379,8 +439,10 @@ class Robotab(Arena):
             while True:
                 ready = gevent.select.select(
                     [player.fd, player.redis_fd], [], [], timeout=4.0)
+
                 if not ready[0]:
                     uwsgi.websocket_recv_nb()
+
                 for fd in ready[0]:
                     if fd == player.fd:
                         try:

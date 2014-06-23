@@ -55,7 +55,7 @@ class Box(object):
 class World(object):
     def __init__(self):
         self.world = ode.World()
-        self.world.setGravity( (0,-9.81,0) )
+        self.world.setGravity( Vector3(0,-9.81,0) )
         self.space = ode.Space()
         self.boxes = {}
         self.contactgroup = ode.JointGroup()
