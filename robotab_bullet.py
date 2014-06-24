@@ -17,7 +17,7 @@ class Box(object):
         self.mass = mass
         self.shape = BoxShape(Vector3(size_x, size_y, size_z))
         self.motion_state = DefaultMotionState(
-            Transform(Quaternion(1, 0, 0, r), Vector3(x, y, z)))
+            Transform(Quaternion(0, 0, 0, r), Vector3(x, y, z)))
         self.inertia = Vector3(0, 0, 0)
         self.shape.calculateLocalInertia(self.mass, self.inertia)
         construction_info = RigidBodyConstructionInfo(
@@ -154,7 +154,7 @@ class Arena(object):
     def cmd_handler(self, player, cmd):
         if cmd == 'rl':
             orientation = player.body.getOrientation()
-            v = Vector3(0, 2000000, 0).rotate(
+            v = Vector3(0, 5000, 0).rotate(
                 orientation.getAxis(), orientation.getAngle())
             player.body.activate(True)
             player.body.applyTorqueImpulse(v)
@@ -162,7 +162,7 @@ class Arena(object):
 
         if cmd == 'rr':
             orientation = player.body.getOrientation()
-            v = Vector3(0, -2000000, 0).rotate(
+            v = Vector3(0, -5000, 0).rotate(
                 orientation.getAxis(), orientation.getAngle())
             player.body.activate(True)
             player.body.applyTorqueImpulse(v)
@@ -303,7 +303,7 @@ class Player(Box):
 
         self.scale = scale
 
-        self.attack = 0
+        # self.attack = 0
         self.energy = 100.0
         self.arena = "arena{}".format(uwsgi.worker_id())
         self.redis = redis.StrictRedis()
@@ -348,9 +348,10 @@ class Player(Box):
         rot_y = quaternion.getY()
         rot_z = quaternion.getZ()
         rot_w = quaternion.getW()
-        msg = ('{name}:{pos_x},{pos_y},{pos_z:},{size_x},{size_y},'
-               '{size_z},{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},'
-               '{rot_w:.2f},{energy:.1f},{avatar},{scale},{color}').format(
+        msg = ('{name}:{pos_x},{pos_y},{pos_z},'
+               '{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},{rot_w:.2f},'
+               '{energy:.1f},{avatar},{size_x},{size_y},{size_z},'
+               '{scale},{color}').format(
             name=self.name,
             pos_x=int(pos_x),
             pos_y=int(pos_y),
@@ -368,6 +369,7 @@ class Player(Box):
             color=self.color
         )
         if msg != self.last_msg:
+            print msg
             self.send_all(msg)
             self.last_msg = msg
 

@@ -482,15 +482,15 @@ function update(td) {
 
         if (player.dirty) {
             draw_hud_div(player);
-            setFromQuaternion(
+            player.rotation.setFromQuaternion(
                 new THREE.Quaternion(
                     player.ws['rot_x'],
                     player.ws['rot_y'],
                     player.ws['rot_z'],
                     player.ws['rot_w']));
-            player.position.x = player.ws['x'];
-            player.position.y = player.ws['y'];
-            player.position.z = player.ws['z'];
+            // player.position.x = player.ws['x'];
+            // player.position.y = player.ws['y'];
+            // player.position.z = player.ws['z'];
         }
 
         if ((player.dirty && player.name == me && !use_eagle_camera) || camera_changed){
