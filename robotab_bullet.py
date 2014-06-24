@@ -10,19 +10,35 @@ import math
 from bulletphysics import *
 
 
+class StaticBox(object):
+
+    def __init__(self, world, size_x, size_y, size_z, x, y, z, r):
+        self.shape = BoxShape(Vector3(size_x, size_y, size_z))
+        q = Quaternion(0, 0, 0, 1)
+        q.setRotation(Vector3(0.0, 1.0, 0.0), r)
+        self.motion_state = DefaultMotionState(
+            Transform(q, Vector3(x, y, z)))
+        construction_info = RigidBodyConstructionInfo(
+            0, self.motion_state, self.shape, Vector3(0, 0, 0))
+        self.body = RigidBody(construction_info)
+        world.addRigidBody(self.body)
+
+
 class Box(object):
 
-    def __init__(self, game, mass, size_x, size_y, size_z, x, y, z, r=0.0, friction=0.8):
+    def __init__(self, game, mass, size_x, size_y, size_z, x, y, z, r, friction=0.8):
         self.game = game
         self.mass = mass
         self.shape = BoxShape(Vector3(size_x, size_y, size_z))
+        q = Quaternion(0, 0, 0, 1)
+        q.setRotation(Vector3(0.0, 1.0, 0.0), r)
         self.motion_state = DefaultMotionState(
-            Transform(Quaternion(0, 0, 0, r), Vector3(x, y, z)))
+            Transform(q, Vector3(x, y, z)))
         self.inertia = Vector3(0, 0, 0)
-        self.shape.calculateLocalInertia(self.mass, self.inertia)
+        # self.shape.calculateLocalInertia(self.mass, self.inertia)
         construction_info = RigidBodyConstructionInfo(
             self.mass, self.motion_state, self.shape, self.inertia)
-        construction_info.m_friction = friction
+        # construction_info.m_friction = friction
         self.body = RigidBody(construction_info)
         self.game.world.addRigidBody(self.body)
         self.trans = Transform()
@@ -102,21 +118,21 @@ class Arena(object):
             self.solver, self.collisionConfiguration)
         self.world.setGravity(Vector3(0, -9.81, 0))
 
+        self.ground_shape = StaticPlaneShape(Vector3(0, 1, 0), 1)
+
         q = Quaternion(0, 0, 0, 1)
         self.ground_motion_state = DefaultMotionState(
-            Transform(q, Vector3(0, 1, 0)))
+            Transform(q, Vector3(0, -1, 0)))
 
-        self.ground_shape = StaticPlaneShape(Vector3(0, 1, 0), 1)
         construction_info = RigidBodyConstructionInfo(
             0, self.ground_motion_state, self.ground_shape, Vector3(0, 0, 0))
-        construction_info.m_friction = 0.8
+        # construction_info.m_friction = 0.8
         self.ground = RigidBody(construction_info)
 
         self.world.addRigidBody(self.ground)
 
         for wall_c in self.walls_coordinates:
-            wall = Box(self, 0, wall_c[0], wall_c[1], wall_c[2],
-                       wall_c[3], wall_c[4], wall_c[5], r=wall_c[6])
+            wall = StaticBox(self.world, *wall_c)
             self.walls.append(wall)
 
         self.arena = "arena{}".format(uwsgi.worker_id())
@@ -152,37 +168,37 @@ class Arena(object):
             self.players[p].cmd = cmd
 
     def cmd_handler(self, player, cmd):
-        if cmd == 'rl':
-            orientation = player.body.getOrientation()
-            v = Vector3(0, 5000, 0).rotate(
-                orientation.getAxis(), orientation.getAngle())
-            player.body.activate(True)
-            player.body.applyTorqueImpulse(v)
-            return True
+        # if cmd == 'rl':
+        #     orientation = player.body.getOrientation()
+        #     v = Vector3(0, 5000, 0).rotate(
+        #         orientation.getAxis(), orientation.getAngle())
+        #     player.body.activate(True)
+        #     player.body.applyTorqueImpulse(v)
+        #     return True
 
-        if cmd == 'rr':
-            orientation = player.body.getOrientation()
-            v = Vector3(0, -5000, 0).rotate(
-                orientation.getAxis(), orientation.getAngle())
-            player.body.activate(True)
-            player.body.applyTorqueImpulse(v)
-            return True
+        # if cmd == 'rr':
+        #     orientation = player.body.getOrientation()
+        #     v = Vector3(0, -5000, 0).rotate(
+        #         orientation.getAxis(), orientation.getAngle())
+        #     player.body.activate(True)
+        #     player.body.applyTorqueImpulse(v)
+        #     return True
 
-        if cmd == 'fw':
-            orientation = player.body.getOrientation()
-            v = Vector3(0, 0, 5000).rotate(
-                orientation.getAxis(), orientation.getAngle())
-            player.body.activate(True)
-            player.body.applyCentralImpulse(v)
-            return True
+        # if cmd == 'fw':
+        #     orientation = player.body.getOrientation()
+        #     v = Vector3(0, 0, 5000).rotate(
+        #         orientation.getAxis(), orientation.getAngle())
+        #     player.body.activate(True)
+        #     player.body.applyCentralImpulse(v)
+        #     return True
 
-        if cmd == 'bw':
-            orientation = player.body.getOrientation()
-            v = Vector3(0, 0, -5000).rotate(
-                orientation.getAxis(), orientation.getAngle())
-            player.body.activate(True)
-            player.body.applyCentralImpulse(v)
-            return True
+        # if cmd == 'bw':
+        #     orientation = player.body.getOrientation()
+        #     v = Vector3(0, 0, -5000).rotate(
+        #         orientation.getAxis(), orientation.getAngle())
+        #     player.body.activate(True)
+        #     player.body.applyCentralImpulse(v)
+        #     return True
 
         return False
 

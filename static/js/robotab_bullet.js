@@ -401,50 +401,50 @@ function update(td) {
             is_pressing = false;
         }
 
-        if (keyboard.pressed("space")){
-            ws.send(me + ":AT");
-        }
-/*
-         else if (players[me] && players[me].ws['a']){
-             ws.send(me+":at");
-         }
-*/
+//         if (keyboard.pressed("space")){
+//             ws.send(me + ":AT");
+//         }
+// /*
+//          else if (players[me] && players[me].ws['a']){
+//              ws.send(me+":at");
+//          }
+// */
 
-        var is_moving = false;
+//         var is_moving = false;
 
-        if (keyboard.pressed("d")){
-            ws.send(me + ":rr");
-            rotating = true;
-            is_moving = true;
-        }
-        else if (keyboard.pressed("a")){
-            ws.send(me + ":rl");
-            rotating = true;
-            is_moving = true;
-        }
+//         if (keyboard.pressed("d")){
+//             ws.send(me + ":rr");
+//             rotating = true;
+//             is_moving = true;
+//         }
+//         else if (keyboard.pressed("a")){
+//             ws.send(me + ":rl");
+//             rotating = true;
+//             is_moving = true;
+//         }
 
 
-        if (!rotating && keyboard.pressed("w")){
-            ws.send(me + ":fw");
-            is_moving = true;
-        }
+//         if (!rotating && keyboard.pressed("w")){
+//             ws.send(me + ":fw");
+//             is_moving = true;
+//         }
 
-        if (!rotating && keyboard.pressed("s")){
-            ws.send(me + ":bw");
-            is_moving = true;
-        }
+//         if (!rotating && keyboard.pressed("s")){
+//             ws.send(me + ":bw");
+//             is_moving = true;
+//         }
 
-        if (is_moving) {
-            if (document.getElementById('move').paused) {
-                document.getElementById('move').play();
-            }
-        }
-        else {
-            if (!document.getElementById('move').paused) {
-                document.getElementById('move').pause();
-                document.getElementById('move').currentTime = 0;
-            }
-        }
+//         if (is_moving) {
+//             if (document.getElementById('move').paused) {
+//                 document.getElementById('move').play();
+//             }
+//         }
+//         else {
+//             if (!document.getElementById('move').paused) {
+//                 document.getElementById('move').pause();
+//                 document.getElementById('move').currentTime = 0;
+//             }
+//         }
     }
 
     Object.keys(bonus_malus).forEach(function(key){
@@ -488,9 +488,9 @@ function update(td) {
                     player.ws['rot_y'],
                     player.ws['rot_z'],
                     player.ws['rot_w']));
-            // player.position.x = player.ws['x'];
-            // player.position.y = player.ws['y'];
-            // player.position.z = player.ws['z'];
+            player.position.x = player.ws['x'];
+            player.position.y = player.ws['y'];
+            player.position.z = player.ws['z'];
         }
 
         if ((player.dirty && player.name == me && !use_eagle_camera) || camera_changed){
