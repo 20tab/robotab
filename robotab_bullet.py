@@ -13,20 +13,21 @@ from bulletphysics import *
 class StaticBox(object):
 
     def __init__(self, world, size_x, size_y, size_z, x, y, z, r):
-        self.shape = BoxShape(Vector3(size_x, size_y, size_z))
+        self.shape = BoxShape(Vector3(size_x*10, size_y, size_z*6))
         q = Quaternion(0, 0, 0, 1)
         q.setRotation(Vector3(0.0, 1.0, 0.0), r)
         self.motion_state = DefaultMotionState(
             Transform(q, Vector3(x, y, z)))
         construction_info = RigidBodyConstructionInfo(
             0, self.motion_state, self.shape, Vector3(0, 0, 0))
+        construction_info.m_friction = -1.0
         self.body = RigidBody(construction_info)
         world.addRigidBody(self.body)
 
 
 class Box(object):
 
-    def __init__(self, game, mass, size_x, size_y, size_z, x, y, z, r, friction=0.8):
+    def __init__(self, game, mass, size_x, size_y, size_z, x, y, z, r, friction=0.0):
         self.game = game
         self.mass = mass
         self.shape = BoxShape(Vector3(size_x, size_y, size_z))
@@ -35,14 +36,15 @@ class Box(object):
         self.motion_state = DefaultMotionState(
             Transform(q, Vector3(x, y, z)))
         self.inertia = Vector3(0, 0, 0)
-        # self.shape.calculateLocalInertia(self.mass, self.inertia)
+        #self.shape.calculateLocalInertia(self.mass, self.inertia)
         construction_info = RigidBodyConstructionInfo(
             self.mass, self.motion_state, self.shape, self.inertia)
-        # construction_info.m_friction = friction
+        construction_info.m_friction = friction
         self.body = RigidBody(construction_info)
         self.game.world.addRigidBody(self.body)
         self.trans = Transform()
         self.origin = self.trans.getOrigin()
+
 
 
 class Arena(object):
@@ -50,7 +52,7 @@ class Arena(object):
     def __init__(self, min_players=3, max_players=8, warmup=10):
         self.greenlets = {
             'engine': self.engine_start,
-            'start': self.start
+            # 'start': self.start
         }
 
         self.posters = [
@@ -72,6 +74,7 @@ class Arena(object):
         self.finished = False
         #self.warming_up = False
         self.walls = []
+        self.ground_coordinates = (270, 1, 270, 0, 0, 0, 1)
         self.walls_coordinates = (
             #sc_x,  sc_y,   sc_z,     x,       y,     z,            r
             (200,     100,     50,     0,     150, -1950,            0),
@@ -96,16 +99,16 @@ class Arena(object):
             #    x,     y,   z,               r,    color
             #(    0,  1650,         math.pi),
             #(    0, -1650,               0),
-            ( -935,    50,   935,  3 * math.pi / 4, 0x7777AA),
-            (  935,    50,   935,  5 * math.pi / 4, 0x770000),
-            (  935,    50,  -935,  7 * math.pi / 4, 0x007700),
-            ( -935,    50,  -935,      math.pi / 4, 0x777700),
-            (-1650,    50,  1650,  3 * math.pi / 4, 0xAA00AA),
+            ( -935,    35,   935,  3 * math.pi / 4, 0x7777AA),
+            (  935,    35,   935,  5 * math.pi / 4, 0x770000),
+            (  935,    35,  -935,  7 * math.pi / 4, 0x007700),
+            ( -935,    35,  -935,      math.pi / 4, 0x777700),
+            (-1650,    35,  1650,  3 * math.pi / 4, 0xAA00AA),
             #(-1650,     0,     math.pi / 2),
             #( 1650,     0, 3 * math.pi / 2),
-            ( 1650,    50,  1650,  5 * math.pi / 4, 0x007777),
-            ( 1650,    50, -1650,  7 * math.pi / 4, 0x000077),
-            (-1650,    50, -1650,      math.pi / 4, 0xFFAA77),
+            ( 1650,    35,  1650,  5 * math.pi / 4, 0x007777),
+            ( 1650,    35, -1650,  7 * math.pi / 4, 0x000077),
+            (-1650,    35, -1650,      math.pi / 4, 0xFFAA77),
 
         )
 
@@ -118,22 +121,23 @@ class Arena(object):
             self.solver, self.collisionConfiguration)
         self.world.setGravity(Vector3(0, -9.81, 0))
 
-        self.ground_shape = StaticPlaneShape(Vector3(0, 1, 0), 1)
+        # self.ground_shape = StaticPlaneShape(Vector3(0, 1, 0), 1)
 
-        q = Quaternion(0, 0, 0, 1)
-        self.ground_motion_state = DefaultMotionState(
-            Transform(q, Vector3(0, -1, 0)))
+        # q = Quaternion(0, 0, 0, 1)
+        # self.ground_motion_state = DefaultMotionState(
+        #     Transform(q, Vector3(0, -1, 0)))
 
-        construction_info = RigidBodyConstructionInfo(
-            0, self.ground_motion_state, self.ground_shape, Vector3(0, 0, 0))
-        # construction_info.m_friction = 0.8
-        self.ground = RigidBody(construction_info)
+        # construction_info = RigidBodyConstructionInfo(
+        #     0, self.ground_motion_state, self.ground_shape, Vector3(0, 0, 0))
+        # construction_info.m_friction = 0.52
+        # self.ground = RigidBody(construction_info)
 
-        self.world.addRigidBody(self.ground)
+        # self.world.addRigidBody(self.ground)
+        self.ground = StaticBox(self.world, *self.ground_coordinates)
 
-        for wall_c in self.walls_coordinates:
-            wall = StaticBox(self.world, *wall_c)
-            self.walls.append(wall)
+        # for wall_c in self.walls_coordinates:
+        #     wall = StaticBox(self.world, *wall_c)
+        #     self.walls.append(wall)
 
         self.arena = "arena{}".format(uwsgi.worker_id())
         self.redis = redis.StrictRedis()
@@ -168,37 +172,37 @@ class Arena(object):
             self.players[p].cmd = cmd
 
     def cmd_handler(self, player, cmd):
-        # if cmd == 'rl':
-        #     orientation = player.body.getOrientation()
-        #     v = Vector3(0, 5000, 0).rotate(
-        #         orientation.getAxis(), orientation.getAngle())
-        #     player.body.activate(True)
-        #     player.body.applyTorqueImpulse(v)
-        #     return True
+        if cmd == 'rl':
+            orientation = player.body.getOrientation()
+            v = Vector3(0, 500000, 0).rotate(
+                orientation.getAxis(), orientation.getAngle())
+            player.body.activate(True)
+            player.body.applyTorqueImpulse(v)
+            return True
 
-        # if cmd == 'rr':
-        #     orientation = player.body.getOrientation()
-        #     v = Vector3(0, -5000, 0).rotate(
-        #         orientation.getAxis(), orientation.getAngle())
-        #     player.body.activate(True)
-        #     player.body.applyTorqueImpulse(v)
-        #     return True
+        if cmd == 'rr':
+            orientation = player.body.getOrientation()
+            v = Vector3(0, -500000, 0).rotate(
+                orientation.getAxis(), orientation.getAngle())
+            player.body.activate(True)
+            player.body.applyTorqueImpulse(v)
+            return True
 
-        # if cmd == 'fw':
-        #     orientation = player.body.getOrientation()
-        #     v = Vector3(0, 0, 5000).rotate(
-        #         orientation.getAxis(), orientation.getAngle())
-        #     player.body.activate(True)
-        #     player.body.applyCentralImpulse(v)
-        #     return True
+        if cmd == 'fw':
+            orientation = player.body.getOrientation()
+            v = Vector3(0, 0, 2000).rotate(
+                orientation.getAxis(), orientation.getAngle())
+            player.body.activate(True)
+            player.body.applyCentralImpulse(v)
+            return True
 
-        # if cmd == 'bw':
-        #     orientation = player.body.getOrientation()
-        #     v = Vector3(0, 0, -5000).rotate(
-        #         orientation.getAxis(), orientation.getAngle())
-        #     player.body.activate(True)
-        #     player.body.applyCentralImpulse(v)
-        #     return True
+        if cmd == 'bw':
+            orientation = player.body.getOrientation()
+            v = Vector3(0, 0, -2000).rotate(
+                orientation.getAxis(), orientation.getAngle())
+            player.body.activate(True)
+            player.body.applyCentralImpulse(v)
+            return True
 
         return False
 
@@ -220,12 +224,16 @@ class Arena(object):
             self.world.stepSimulation(1, 30)
             for p in self.players.keys():
                 player = self.players[p]
+                # if player.cmd:
+                #     draw = self.cmd_handler(player, player.cmd)
+                #     draw = True
+                #     if draw:
+                #         player.update_gfx()
+                #     player.cmd = None
                 if player.cmd:
-                    draw = self.cmd_handler(player, player.cmd)
-                    draw = True
-                    if draw:
-                        player.update_gfx()
+                    self.cmd_handler(player, player.cmd)
                     player.cmd = None
+                player.update_gfx()
             t1 = uwsgi.micros() / 1000.0
             delta = t1 - t
             if delta < 33.33:
@@ -239,8 +247,8 @@ class Arena(object):
         #self.warming_up = True
 
         while len(self.players) < self.min_players:
-            for p in self.players.keys():
-                self.players[p].update_gfx()
+            # for p in self.players.keys():
+            #     self.players[p].update_gfx()
             gevent.sleep(1)
             if self.finished:
                 self.greenlets['start'] = self.start
@@ -307,10 +315,10 @@ class Arena(object):
 class Player(Box):
 
     def __init__(self, game, name, avatar, fd, x, y, z, r, color, scale=5, speed=15):
-        self.size_x = 50
-        self.size_y = 40
-        self.size_z = 70
-        super(Player, self).__init__(game, 900.0, self.size_x, self.size_y, self.size_z, x, y, z, r)
+        self.size_x = 25
+        self.size_y = 45
+        self.size_z = 35
+        super(Player, self).__init__(game, 90.0, self.size_x, self.size_y, self.size_z, x, y, z, r)
         self.name = name
         self.avatar = avatar
         self.fd = fd
@@ -341,8 +349,7 @@ class Player(Box):
         self.energy -= amount
         if self.energy <= 0:
             self.game.broadcast(
-                '{} was killed by {}'.format(self.name, attacker)
-            )
+                '{} was killed by {}'.format(self.name, attacker))
             self.end('loser')
         else:
             self.update_gfx()
@@ -419,12 +426,12 @@ class Robotab(Arena):
             uwsgi.websocket_handshake()
             username, avatar = uwsgi.websocket_recv().split(':')
             try:
-                robot_coordinates = self.spawn_iterator.next()
+                robot_coordinates = next(self.spawn_iterator)
             except StopIteration:
                 self.spawn_iterator = iter(self.spawn_points)
-                robot_coordinates = self.spawn_iterator.next()
+                robot_coordinates = next(self.spawn_iterator)
 
-            uwsgi.websocket_send('posters:{}'.format(';'.join(self.posters)))
+            # uwsgi.websocket_send('posters:{}'.format(';'.join(self.posters)))
 
             for wall in self.walls_coordinates:
                 uwsgi.websocket_send(
@@ -451,8 +458,10 @@ class Robotab(Arena):
 
             self.spawn_greenlets()
 
+            player.update_gfx()
+
             for p in self.players.keys():
-                self.players[p].update_gfx()
+                uwsgi.websocket_send(self.players[p].last_msg)
 
             while True:
                 ready = gevent.select.select(
