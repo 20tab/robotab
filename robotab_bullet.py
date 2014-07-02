@@ -27,7 +27,7 @@ class StaticBox(object):
 
 class Box(object):
 
-    def __init__(self, game, mass, size_x, size_y, size_z, x, y, z, r, friction=0.0):
+    def __init__(self, game, mass, size_x, size_y, size_z, x, y, z, r, friction=0.5):
         self.game = game
         self.mass = mass
         self.shape = BoxShape(Vector3(size_x, size_y, size_z))
@@ -36,7 +36,7 @@ class Box(object):
         self.motion_state = DefaultMotionState(
             Transform(q, Vector3(x, y, z)))
         self.inertia = Vector3(0, 0, 0)
-        #self.shape.calculateLocalInertia(self.mass, self.inertia)
+        self.shape.calculateLocalInertia(self.mass, self.inertia)
         construction_info = RigidBodyConstructionInfo(
             self.mass, self.motion_state, self.shape, self.inertia)
         construction_info.m_friction = friction
@@ -44,7 +44,6 @@ class Box(object):
         self.game.world.addRigidBody(self.body)
         self.trans = Transform()
         self.origin = self.trans.getOrigin()
-
 
 
 class Arena(object):
@@ -174,7 +173,7 @@ class Arena(object):
     def cmd_handler(self, player, cmd):
         if cmd == 'rl':
             orientation = player.body.getOrientation()
-            v = Vector3(0, 500000, 0).rotate(
+            v = Vector3(0, 1000, 0).rotate(
                 orientation.getAxis(), orientation.getAngle())
             player.body.activate(True)
             player.body.applyTorqueImpulse(v)
@@ -182,7 +181,7 @@ class Arena(object):
 
         if cmd == 'rr':
             orientation = player.body.getOrientation()
-            v = Vector3(0, -500000, 0).rotate(
+            v = Vector3(0, -1000, 0).rotate(
                 orientation.getAxis(), orientation.getAngle())
             player.body.activate(True)
             player.body.applyTorqueImpulse(v)
@@ -190,7 +189,7 @@ class Arena(object):
 
         if cmd == 'fw':
             orientation = player.body.getOrientation()
-            v = Vector3(0, 0, 2000).rotate(
+            v = Vector3(0, 0, 500).rotate(
                 orientation.getAxis(), orientation.getAngle())
             player.body.activate(True)
             player.body.applyCentralImpulse(v)
@@ -198,7 +197,7 @@ class Arena(object):
 
         if cmd == 'bw':
             orientation = player.body.getOrientation()
-            v = Vector3(0, 0, -2000).rotate(
+            v = Vector3(0, 0, -500).rotate(
                 orientation.getAxis(), orientation.getAngle())
             player.body.activate(True)
             player.body.applyCentralImpulse(v)
