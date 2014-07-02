@@ -46,7 +46,8 @@
 
 	var texture = THREE.ImageUtils.loadTexture( '/static/img/crate.gif');
 
-        var ws = new WebSocket('ws://' + window.location.host + '/phys');
+        //var ws = new WebSocket('ws://' + window.location.host + '/phys');
+	var ws = new WebSocket("ws://robotab.20tab.com/phys");
         ws.onmessage = function(e) {
                 //console.log(e.data);
                 var items = e.data.split(':')

@@ -12,7 +12,7 @@ from bulletphysics import *
 
 class StaticBox(object):
 
-    def __init__(self, world, size_x, size_y, size_z, x, y, z, r):
+    def __init__(self, world, size_x, size_y, size_z, x, y, z, r, friction=0.5):
         self.shape = BoxShape(Vector3(size_x*10, size_y, size_z*6))
         q = Quaternion(0, 0, 0, 1)
         q.setRotation(Vector3(0.0, 1.0, 0.0), r)
@@ -20,7 +20,7 @@ class StaticBox(object):
             Transform(q, Vector3(x, y, z)))
         construction_info = RigidBodyConstructionInfo(
             0, self.motion_state, self.shape, Vector3(0, 0, 0))
-        construction_info.m_friction = -1.0
+        construction_info.m_friction = friction
         self.body = RigidBody(construction_info)
         world.addRigidBody(self.body)
 
@@ -73,25 +73,25 @@ class Arena(object):
         self.finished = False
         #self.warming_up = False
         self.walls = []
-        self.ground_coordinates = (270, 1, 270, 0, 0, 0, 1)
+        # self.ground_coordinates = (270, 1, 270, 0, 0, 0, 1)
         self.walls_coordinates = (
             #sc_x,  sc_y,   sc_z,     x,       y,     z,            r
-            (200,     100,     50,     0,     150, -1950,            0),
-            (200,     100,     50, -1950,     150,     0, -math.pi / 2),
-            (200,     100,     50,  1950,     150,     0, -math.pi / 2),
-            (200,     100,     50,     0,     150,  1950,            0),
+           (200,     100,     50,     0,     150, -1950,            0),
+           (200,     100,     50, -1950,     150,     0, -math.pi / 2),
+           (200,     100,     50,  1950,     150,     0, -math.pi / 2),
+           (200,     100,     50,     0,     150,  1950,            0),
 
-            ( 50,      50,     30,  -730,     150, -1200,            0),
-            ( 50,      50,     30,   730,     150, -1200,            0),
+           ( 50,      50,     30,  -730,     150, -1200,            0),
+           ( 50,      50,     30,   730,     150, -1200,            0),
 
-            ( 50,      50,     30, -1200,     150,  -730, -math.pi / 2),
-            ( 50,      50,     30, -1200,     150,   730, -math.pi / 2),
+           ( 50,      50,     30, -1200,     150,  -730, -math.pi / 2),
+           ( 50,      50,     30, -1200,     150,   730, -math.pi / 2),
 
-            ( 50,      50,     30,  1200,     150,  -730, -math.pi / 2),
-            ( 50,      50,     30,  1200,     150,   730, -math.pi / 2),
+           ( 50,      50,     30,  1200,     150,  -730, -math.pi / 2),
+           ( 50,      50,     30,  1200,     150,   730, -math.pi / 2),
 
-            ( 50,      50,     30,  -730,     150,  1200,            0),
-            ( 50,      50,     30,   730,     150,  1200,            0),
+           ( 50,      50,     30,  -730,     150,  1200,            0),
+           ( 50,      50,     30,   730,     150,  1200,            0),
         )
 
         self.spawn_points = (
@@ -120,23 +120,23 @@ class Arena(object):
             self.solver, self.collisionConfiguration)
         self.world.setGravity(Vector3(0, -9.81, 0))
 
-        # self.ground_shape = StaticPlaneShape(Vector3(0, 1, 0), 1)
+        self.ground_shape = StaticPlaneShape(Vector3(0, 1, 0), 1)
 
-        # q = Quaternion(0, 0, 0, 1)
-        # self.ground_motion_state = DefaultMotionState(
-        #     Transform(q, Vector3(0, -1, 0)))
+        q = Quaternion(0, 0, 0, 1)
+        self.ground_motion_state = DefaultMotionState(
+            Transform(q, Vector3(0, -1, 0)))
 
-        # construction_info = RigidBodyConstructionInfo(
-        #     0, self.ground_motion_state, self.ground_shape, Vector3(0, 0, 0))
-        # construction_info.m_friction = 0.52
-        # self.ground = RigidBody(construction_info)
+        construction_info = RigidBodyConstructionInfo(
+            0, self.ground_motion_state, self.ground_shape, Vector3(0, 0, 0))
+        construction_info.m_friction = 0.52
+        self.ground = RigidBody(construction_info)
 
-        # self.world.addRigidBody(self.ground)
-        self.ground = StaticBox(self.world, *self.ground_coordinates)
+        self.world.addRigidBody(self.ground)
+        # self.ground = StaticBox(self.world, *self.ground_coordinates)
 
-        # for wall_c in self.walls_coordinates:
-        #     wall = StaticBox(self.world, *wall_c)
-        #     self.walls.append(wall)
+        for wall_c in self.walls_coordinates:
+            wall = StaticBox(self.world, wall_c[0], wall_c[1], 6, wall_c[3], 0, wall_c[5], wall_c[6])
+            self.walls.append(wall)
 
         self.arena = "arena{}".format(uwsgi.worker_id())
         self.redis = redis.StrictRedis()
@@ -189,7 +189,7 @@ class Arena(object):
 
         if cmd == 'fw':
             orientation = player.body.getOrientation()
-            v = Vector3(0, 0, 500).rotate(
+            v = Vector3(0, 0, 300).rotate(
                 orientation.getAxis(), orientation.getAngle())
             player.body.activate(True)
             player.body.applyCentralImpulse(v)
@@ -197,7 +197,7 @@ class Arena(object):
 
         if cmd == 'bw':
             orientation = player.body.getOrientation()
-            v = Vector3(0, 0, -500).rotate(
+            v = Vector3(0, 0, -300).rotate(
                 orientation.getAxis(), orientation.getAngle())
             player.body.activate(True)
             player.body.applyCentralImpulse(v)
@@ -314,9 +314,9 @@ class Arena(object):
 class Player(Box):
 
     def __init__(self, game, name, avatar, fd, x, y, z, r, color, scale=5, speed=15):
-        self.size_x = 25
-        self.size_y = 45
-        self.size_z = 35
+        self.size_x = 30 
+        self.size_y = 35
+        self.size_z = 45 
         super(Player, self).__init__(game, 90.0, self.size_x, self.size_y, self.size_z, x, y, z, r)
         self.name = name
         self.avatar = avatar
@@ -405,7 +405,7 @@ class Player(Box):
             except IOError:
                 import sys
                 print sys.exc_info()
-                if self.name in self.players:
+                if self.name in self.game.players:
                     self.end('leaver')
                 return [""]
 
