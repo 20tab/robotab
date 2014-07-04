@@ -128,7 +128,7 @@ class Arena(object):
 
         construction_info = RigidBodyConstructionInfo(
             0, self.ground_motion_state, self.ground_shape, Vector3(0, 0, 0))
-        construction_info.m_friction = 0.52
+        construction_info.m_friction = 0.6 
         self.ground = RigidBody(construction_info)
 
         self.world.addRigidBody(self.ground)
@@ -172,11 +172,18 @@ class Arena(object):
 
     def cmd_handler(self, player, cmd):
         if cmd == 'rl':
-            orientation = player.body.getOrientation()
-            v = Vector3(0, 1000, 0).rotate(
-                orientation.getAxis(), orientation.getAngle())
+            q = Quaternion(0, 3*math.pi/180, 0, 1) * player.trans.getRotation()
+
+            player.trans.setRotation(q)
+            #player.body.activate(True)
+            player.body.setCenterOfMassTransform(player.trans)
             player.body.activate(True)
-            player.body.applyTorqueImpulse(v)
+            #player.body.setWorldTransform(player.trans)
+            #orientation = player.body.getOrientation()
+            #v = Vector3(0, 1000, 0).rotate(
+            #    orientation.getAxis(), orientation.getAngle())
+            #player.body.activate(True)
+            #player.body.applyTorqueImpulse(v)
             return True
 
         if cmd == 'rr':
@@ -225,7 +232,6 @@ class Arena(object):
                 player = self.players[p]
                 velocity = player.body.getLinearVelocity()
                 speed = velocity.length()
-                print speed
                 if speed > 90:
                     new_speed = 90 / speed
                     velocity = Vector3(
@@ -327,7 +333,7 @@ class Player(Box):
         self.size_x = 30 
         self.size_y = 35
         self.size_z = 45 
-        super(Player, self).__init__(game, 90.0, self.size_x, self.size_y, self.size_z, x, y, z, r)
+        super(Player, self).__init__(game, 90.0, self.size_x, self.size_y, self.size_z, x, y, z, r, 0.5)
         self.name = name
         self.avatar = avatar
         self.fd = fd
