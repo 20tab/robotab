@@ -135,7 +135,7 @@ class Arena(object):
         # self.ground = StaticBox(self.world, *self.ground_coordinates)
 
         for wall_c in self.walls_coordinates:
-            wall = StaticBox(self.world, wall_c[0], wall_c[1], 6, wall_c[3], 0, wall_c[5], wall_c[6])
+            wall = StaticBox(self.world, wall_c[0], wall_c[1], 6, wall_c[3], 0, wall_c[5], wall_c[6], 5.0)
             self.walls.append(wall)
 
         self.arena = "arena{}".format(uwsgi.worker_id())
@@ -223,6 +223,16 @@ class Arena(object):
             self.world.stepSimulation(1, 30)
             for p in self.players.keys():
                 player = self.players[p]
+                velocity = player.body.getLinearVelocity()
+                speed = velocity.length()
+                print speed
+                if speed > 90:
+                    new_speed = 90 / speed
+                    velocity = Vector3(
+                        new_speed * velocity.getX(),
+                        new_speed * velocity.getY(),
+                        new_speed * velocity.getZ())
+                    player.body.setLinearVelocity(velocity)
                 # if player.cmd:
                 #     draw = self.cmd_handler(player, player.cmd)
                 #     draw = True
@@ -391,7 +401,7 @@ class Player(Box):
             color=self.color
         )
         if msg != self.last_msg:
-            print msg
+            #print msg
             self.send_all(msg)
             self.last_msg = msg
 
@@ -442,10 +452,10 @@ class Robotab(Arena):
             if(self.started or self.finished or
                len(self.players) > self.max_players or
                len(self.waiting_players) > 0):
-                print('{}:{}:{}:{}'.format(
-                    self.started, self.finished,
-                    len(self.players) > self.max_players,
-                    len(self.waiting_players) > 0))
+                #print('{}:{}:{}:{}'.format(
+                #    self.started, self.finished,
+                #    len(self.players) > self.max_players,
+                #    len(self.waiting_players) > 0))
 
                 self.waiting_players.append(player)
                 uwsgi.websocket_send(
