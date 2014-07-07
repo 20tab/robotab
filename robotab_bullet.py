@@ -73,25 +73,25 @@ class Arena(object):
         self.finished = False
         #self.warming_up = False
         self.walls = []
-        # self.ground_coordinates = (270, 1, 270, 0, 0, 0, 1)
+        self.ground_coordinates = (200, 1, 200, 0, 0, 0, 1)
         self.walls_coordinates = (
             #sc_x,  sc_y,   sc_z,     x,       y,     z,            r
-           (200,     100,     50,     0,     150, -1950,            0),
-           (200,     100,     50, -1950,     150,     0, -math.pi / 2),
-           (200,     100,     50,  1950,     150,     0, -math.pi / 2),
-           (200,     100,     50,     0,     150,  1950,            0),
+           #(200,     100,     50,     0,     150, -1950,            0),
+           #(200,     100,     50, -1950,     150,     0, -math.pi / 2),
+           #(200,     100,     50,  1950,     150,     0, -math.pi / 2),
+           #(200,     100,     50,     0,     150,  1950,            0),
 
-           ( 50,      50,     30,  -730,     150, -1200,            0),
-           ( 50,      50,     30,   730,     150, -1200,            0),
+           #( 50,      50,     30,  -730,     150, -1200,            0),
+           #( 50,      50,     30,   730,     150, -1200,            0),
 
-           ( 50,      50,     30, -1200,     150,  -730, -math.pi / 2),
-           ( 50,      50,     30, -1200,     150,   730, -math.pi / 2),
+           #( 50,      50,     30, -1200,     150,  -730, -math.pi / 2),
+           #( 50,      50,     30, -1200,     150,   730, -math.pi / 2),
 
-           ( 50,      50,     30,  1200,     150,  -730, -math.pi / 2),
-           ( 50,      50,     30,  1200,     150,   730, -math.pi / 2),
+           #( 50,      50,     30,  1200,     150,  -730, -math.pi / 2),
+           #( 50,      50,     30,  1200,     150,   730, -math.pi / 2),
 
-           ( 50,      50,     30,  -730,     150,  1200,            0),
-           ( 50,      50,     30,   730,     150,  1200,            0),
+           #( 50,      50,     30,  -730,     150,  1200,            0),
+           #( 50,      50,     30,   730,     150,  1200,            0),
         )
 
         self.spawn_points = (
@@ -120,19 +120,19 @@ class Arena(object):
             self.solver, self.collisionConfiguration)
         self.world.setGravity(Vector3(0, -9.81, 0))
 
-        self.ground_shape = StaticPlaneShape(Vector3(0, 1, 0), 1)
+        #self.ground_shape = StaticPlaneShape(Vector3(0, 1, 0), 1)
 
-        q = Quaternion(0, 0, 0, 1)
-        self.ground_motion_state = DefaultMotionState(
-            Transform(q, Vector3(0, -1, 0)))
+        #q = Quaternion(0, 0, 0, 1)
+        #self.ground_motion_state = DefaultMotionState(
+        #    Transform(q, Vector3(0, -1, 0)))
 
-        construction_info = RigidBodyConstructionInfo(
-            0, self.ground_motion_state, self.ground_shape, Vector3(0, 0, 0))
-        construction_info.m_friction = 0.6 
-        self.ground = RigidBody(construction_info)
+        #construction_info = RigidBodyConstructionInfo(
+        #    0, self.ground_motion_state, self.ground_shape, Vector3(0, 0, 0))
+        #construction_info.m_friction = 0.6 
+        #self.ground = RigidBody(construction_info)
 
-        self.world.addRigidBody(self.ground)
-        # self.ground = StaticBox(self.world, *self.ground_coordinates)
+        #self.world.addRigidBody(self.ground)
+        self.ground = StaticBox(self.world, *self.ground_coordinates)
 
         for wall_c in self.walls_coordinates:
             wall = StaticBox(self.world, wall_c[0], wall_c[1], 6, wall_c[3], 0, wall_c[5], wall_c[6], 5.0)
@@ -172,12 +172,11 @@ class Arena(object):
 
     def cmd_handler(self, player, cmd):
         if cmd == 'rl':
-            q = Quaternion(0, 3*math.pi/180, 0, 1) * player.trans.getRotation()
-
+            q = Quaternion(0, 0.05, 0, 1) * player.trans.getRotation()
             player.trans.setRotation(q)
-            #player.body.activate(True)
-            player.body.setCenterOfMassTransform(player.trans)
             player.body.activate(True)
+            player.body.setCenterOfMassTransform(player.trans)
+            #player.body.activate(True)
             #player.body.setWorldTransform(player.trans)
             #orientation = player.body.getOrientation()
             #v = Vector3(0, 1000, 0).rotate(
@@ -187,19 +186,23 @@ class Arena(object):
             return True
 
         if cmd == 'rr':
-            orientation = player.body.getOrientation()
-            v = Vector3(0, -1000, 0).rotate(
-                orientation.getAxis(), orientation.getAngle())
+            q = Quaternion(0, -0.05, 0, 1) * player.trans.getRotation()
+            player.trans.setRotation(q)
             player.body.activate(True)
-            player.body.applyTorqueImpulse(v)
+            player.body.setCenterOfMassTransform(player.trans)
+            #orientation = player.body.getOrientation()
+            #v = Vector3(0, -1000, 0).rotate(
+            #    orientation.getAxis(), orientation.getAngle())
+            #player.body.activate(True)
+            #player.body.applyTorqueImpulse(v)
             return True
 
         if cmd == 'fw':
             orientation = player.body.getOrientation()
-            v = Vector3(0, 0, 300).rotate(
+            v = Vector3(0, 0, 3000).rotate(
                 orientation.getAxis(), orientation.getAngle())
             player.body.activate(True)
-            player.body.applyCentralImpulse(v)
+            player.body.applyCentralForce(v)
             return True
 
         if cmd == 'bw':
