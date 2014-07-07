@@ -51,7 +51,7 @@ class Arena(object):
     def __init__(self, min_players=3, max_players=8, warmup=10):
         self.greenlets = {
             'engine': self.engine_start,
-            # 'start': self.start
+            'start': self.start
         }
 
         self.posters = [
@@ -70,28 +70,28 @@ class Arena(object):
         self.max_players = max_players
         self.warmup = warmup
         self.started = False
-        self.finished = False
+        self.finished = gevent.event.Event()
         #self.warming_up = False
         self.walls = []
         self.ground_coordinates = (200, 1, 200, 0, 0, 0, 1)
         self.walls_coordinates = (
             #sc_x,  sc_y,   sc_z,     x,       y,     z,            r
-           #(200,     100,     50,     0,     150, -1950,            0),
-           #(200,     100,     50, -1950,     150,     0, -math.pi / 2),
-           #(200,     100,     50,  1950,     150,     0, -math.pi / 2),
-           #(200,     100,     50,     0,     150,  1950,            0),
+           (200,     100,     50,     0,     150, -1950,            0),
+           (200,     100,     50, -1950,     150,     0, -math.pi / 2),
+           (200,     100,     50,  1950,     150,     0, -math.pi / 2),
+           (200,     100,     50,     0,     150,  1950,            0),
 
-           #( 50,      50,     30,  -730,     150, -1200,            0),
-           #( 50,      50,     30,   730,     150, -1200,            0),
+           ( 50,      50,     30,  -730,     150, -1200,            0),
+           ( 50,      50,     30,   730,     150, -1200,            0),
 
-           #( 50,      50,     30, -1200,     150,  -730, -math.pi / 2),
-           #( 50,      50,     30, -1200,     150,   730, -math.pi / 2),
+           ( 50,      50,     30, -1200,     150,  -730, -math.pi / 2),
+           ( 50,      50,     30, -1200,     150,   730, -math.pi / 2),
 
-           #( 50,      50,     30,  1200,     150,  -730, -math.pi / 2),
-           #( 50,      50,     30,  1200,     150,   730, -math.pi / 2),
+           ( 50,      50,     30,  1200,     150,  -730, -math.pi / 2),
+           ( 50,      50,     30,  1200,     150,   730, -math.pi / 2),
 
-           #( 50,      50,     30,  -730,     150,  1200,            0),
-           #( 50,      50,     30,   730,     150,  1200,            0),
+           ( 50,      50,     30,  -730,     150,  1200,            0),
+           ( 50,      50,     30,   730,     150,  1200,            0),
         )
 
         self.spawn_points = (
@@ -120,18 +120,6 @@ class Arena(object):
             self.solver, self.collisionConfiguration)
         self.world.setGravity(Vector3(0, -9.81, 0))
 
-        #self.ground_shape = StaticPlaneShape(Vector3(0, 1, 0), 1)
-
-        #q = Quaternion(0, 0, 0, 1)
-        #self.ground_motion_state = DefaultMotionState(
-        #    Transform(q, Vector3(0, -1, 0)))
-
-        #construction_info = RigidBodyConstructionInfo(
-        #    0, self.ground_motion_state, self.ground_shape, Vector3(0, 0, 0))
-        #construction_info.m_friction = 0.6 
-        #self.ground = RigidBody(construction_info)
-
-        #self.world.addRigidBody(self.ground)
         self.ground = StaticBox(self.world, *self.ground_coordinates)
 
         for wall_c in self.walls_coordinates:
@@ -167,7 +155,7 @@ class Arena(object):
 
     def msg_handler(self, player, msg):
         p, cmd = msg.split(':')
-        if cmd not in ('at', 'AT'):
+        if cmd != 'AT':
             self.players[p].cmd = cmd
 
     def cmd_handler(self, player, cmd):
@@ -221,33 +209,27 @@ class Arena(object):
         while True:
             t = uwsgi.micros() / 1000.0
             if len(self.players) == 1 and self.started:
-                self.finished = True
+                self.finished.set()
                 self.winning_logic()
                 self.restart_game(11)
                 break
             elif len(self.players) == 0:
-                self.finished = True
+                self.finished.set()
                 self.restart_game()
                 break
 
             self.world.stepSimulation(1, 30)
-            for p in self.players.keys():
+            for p in self.players:
                 player = self.players[p]
                 velocity = player.body.getLinearVelocity()
                 speed = velocity.length()
-                if speed > 90:
-                    new_speed = 90 / speed
+                if speed > player.max_speed:
+                    new_speed = player.max_speed / speed
                     velocity = Vector3(
                         new_speed * velocity.getX(),
                         new_speed * velocity.getY(),
                         new_speed * velocity.getZ())
                     player.body.setLinearVelocity(velocity)
-                # if player.cmd:
-                #     draw = self.cmd_handler(player, player.cmd)
-                #     draw = True
-                #     if draw:
-                #         player.update_gfx()
-                #     player.cmd = None
                 if player.cmd:
                     self.cmd_handler(player, player.cmd)
                     player.cmd = None
@@ -265,10 +247,10 @@ class Arena(object):
         #self.warming_up = True
 
         while len(self.players) < self.min_players:
-            # for p in self.players.keys():
+            # for p in self.players:
             #     self.players[p].update_gfx()
             gevent.sleep(1)
-            if self.finished:
+            if self.finished.is_set():
                 self.greenlets['start'] = self.start
                 print("ending")
                 return
@@ -287,13 +269,14 @@ class Arena(object):
         gevent.sleep()
 
         bm_counter = 0
-        while not self.finished:
-            gevent.sleep(10.0)
+        self.finished.wait(timeout=10.0)
+        while not self.finished.is_set():
             # if len(self.bonus_malus_spawn_points) > 0:
             #     coordinates = self.bonus_malus_spawn_points.pop(randrange(len(self.bonus_malus_spawn_points)))
             #     choice(self.bonus_malus)(self, bm_counter, *(coordinates))
             #     bm_counter += 1
-        gevent.sleep(1.0)
+            print("\n\nbm\n\n")
+            self.finished.wait(timeout=10.0)
         self.broadcast("end")
         self.started = False
         self.greenlets['start'] = self.start
@@ -318,9 +301,9 @@ class Arena(object):
         while countdown > 0:
             self.broadcast(
                 'next game will start in {} seconds'.format(countdown))
-            gevent.sleep(1)
             countdown -= 1
-        self.finished = False
+            gevent.sleep(1)
+        self.finished.clear()
         self.players = {}
         if len(self.waiting_players) > 0:
             for player in self.waiting_players:
@@ -332,11 +315,11 @@ class Arena(object):
 
 class Player(Box):
 
-    def __init__(self, game, name, avatar, fd, x, y, z, r, color, scale=5, speed=15):
+    def __init__(self, game, name, avatar, fd, x, y, z, r, color, scale=5, max_speed=80):
         self.size_x = 30 
         self.size_y = 35
         self.size_z = 45 
-        super(Player, self).__init__(game, 90.0, self.size_x, self.size_y, self.size_z, x, y, z, r, 0.5)
+        super(Player, self).__init__(game, 900.0, self.size_x, self.size_y, self.size_z, x, y, z, r, 0.5)
         self.name = name
         self.avatar = avatar
         self.fd = fd
@@ -354,6 +337,7 @@ class Player(Box):
         self.redis_fd = self.channel.connection._sock.fileno()
 
         self.cmd = None
+        self.max_speed = max_speed
         # self.bullet = Bullet(self.game, self)
         self.color = color
 
@@ -416,7 +400,7 @@ class Player(Box):
 
     def wait_for_game(self):
         print("wait for game")
-        while (self.game.started or self.game.finished or
+        while (self.game.started or self.game.finished.is_set() or
                self.name not in self.game.players):
             gevent.sleep(1)
             try:
@@ -449,7 +433,7 @@ class Robotab(Arena):
                 self.spawn_iterator = iter(self.spawn_points)
                 robot_coordinates = next(self.spawn_iterator)
 
-            # uwsgi.websocket_send('posters:{}'.format(';'.join(self.posters)))
+            uwsgi.websocket_send('posters:{}'.format(';'.join(self.posters)))
 
             for wall in self.walls_coordinates:
                 uwsgi.websocket_send(
@@ -458,7 +442,7 @@ class Robotab(Arena):
             player = Player(self, username, avatar,
                             uwsgi.connection_fd(), *robot_coordinates)
 
-            if(self.started or self.finished or
+            if(self.started or self.finished.is_set() or
                len(self.players) > self.max_players or
                len(self.waiting_players) > 0):
                 #print('{}:{}:{}:{}'.format(
@@ -470,7 +454,7 @@ class Robotab(Arena):
                 uwsgi.websocket_send(
                     "arena:hey {}, wait for next game".format(player.name))
                 player.wait_for_game()
-                self.waiting_players.remove(player)
+                del self.waiting_players[player.name]
             else:
                 self.players[player.name] = player
 
@@ -478,7 +462,7 @@ class Robotab(Arena):
 
             player.update_gfx()
 
-            for p in self.players.keys():
+            for p in self.players:
                 uwsgi.websocket_send(self.players[p].last_msg)
 
             while True:
@@ -498,7 +482,7 @@ class Robotab(Arena):
                             if player.name in self.players:
                                 player.end('leaver')
                             return [""]
-                        if msg and not self.finished:
+                        if msg and not self.finished.is_set():
                             self.msg_handler(player, msg)
                     elif fd == player.redis_fd:
                         msg = player.channel.parse_response()
