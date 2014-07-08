@@ -12,8 +12,8 @@ from bulletphysics import *
 
 class StaticBox(object):
 
-    def __init__(self, world, size_x, size_y, size_z, x, y, z, r, friction=0.5):
-        self.shape = BoxShape(Vector3(size_x*10, size_y, size_z*6))
+    def __init__(self, world, size_x, size_y, size_z, x, y, z, r, friction=0.5, sc_x=1, sc_y=1, sc_z=1):
+        self.shape = BoxShape(Vector3(size_x*sc_x, size_y*sc_y, size_z*sc_z))
         q = Quaternion(0, 0, 0, 1)
         q.setRotation(Vector3(0.0, 1.0, 0.0), r)
         self.motion_state = DefaultMotionState(
@@ -73,7 +73,7 @@ class Arena(object):
         self.finished = gevent.event.Event()
         #self.warming_up = False
         self.walls = []
-        self.ground_coordinates = (200, 1, 200, 0, 0, 0, 1)
+        self.ground_coordinates = (2000, 1, 2000, 0, 0, 0, 0)
         self.walls_coordinates = (
             #sc_x,  sc_y,   sc_z,     x,       y,     z,            r
            (200,     100,     50,     0,     150, -1950,            0),
@@ -98,16 +98,16 @@ class Arena(object):
             #    x,     y,   z,               r,    color
             #(    0,  1650,         math.pi),
             #(    0, -1650,               0),
-            ( -935,    35,   935,  3 * math.pi / 4, 0x7777AA),
-            (  935,    35,   935,  5 * math.pi / 4, 0x770000),
-            (  935,    35,  -935,  7 * math.pi / 4, 0x007700),
-            ( -935,    35,  -935,      math.pi / 4, 0x777700),
-            (-1650,    35,  1650,  3 * math.pi / 4, 0xAA00AA),
+            ( -935,    50,   935,  3 * math.pi / 4, 0x7777AA),
+            (  935,    50,   935,  5 * math.pi / 4, 0x770000),
+            (  935,    50,  -935,  7 * math.pi / 4, 0x007700),
+            ( -935,    50,  -935,      math.pi / 4, 0x777700),
+            (-1650,    50,  1650,  3 * math.pi / 4, 0xAA00AA),
             #(-1650,     0,     math.pi / 2),
             #( 1650,     0, 3 * math.pi / 2),
-            ( 1650,    35,  1650,  5 * math.pi / 4, 0x007777),
-            ( 1650,    35, -1650,  7 * math.pi / 4, 0x000077),
-            (-1650,    35, -1650,      math.pi / 4, 0xFFAA77),
+            ( 1650,    50,  1650,  5 * math.pi / 4, 0x007777),
+            ( 1650,    50, -1650,  7 * math.pi / 4, 0x000077),
+            (-1650,    50, -1650,      math.pi / 4, 0xFFAA77),
 
         )
 
@@ -123,7 +123,7 @@ class Arena(object):
         self.ground = StaticBox(self.world, *self.ground_coordinates)
 
         for wall_c in self.walls_coordinates:
-            wall = StaticBox(self.world, wall_c[0], wall_c[1], 6, wall_c[3], 0, wall_c[5], wall_c[6], 5.0)
+            wall = StaticBox(self.world, wall_c[0], wall_c[1], 6, wall_c[3], 0, wall_c[5], wall_c[6], 5.0, 10, 1, 6)
             self.walls.append(wall)
 
         self.arena = "arena{}".format(uwsgi.worker_id())
@@ -186,8 +186,11 @@ class Arena(object):
             return True
 
         if cmd == 'fw':
+            #player.vehicle.applyEngineForce(100000.0, 2)
+            #player.vehicle.applyEngineForce(100000.0, 3)
+
             orientation = player.body.getOrientation()
-            v = Vector3(0, 0, 3000).rotate(
+            v = Vector3(0, 0, 6000).rotate(
                 orientation.getAxis(), orientation.getAngle())
             player.body.activate(True)
             player.body.applyCentralForce(v)
@@ -195,7 +198,7 @@ class Arena(object):
 
         if cmd == 'bw':
             orientation = player.body.getOrientation()
-            v = Vector3(0, 0, -300).rotate(
+            v = Vector3(0, 0, -6000).rotate(
                 orientation.getAxis(), orientation.getAngle())
             player.body.activate(True)
             player.body.applyCentralImpulse(v)
@@ -211,7 +214,7 @@ class Arena(object):
             if len(self.players) == 1 and self.started:
                 self.finished.set()
                 self.winning_logic()
-                self.restart_game(11)
+                self.restart_game(2)
                 break
             elif len(self.players) == 0:
                 self.finished.set()
@@ -219,7 +222,7 @@ class Arena(object):
                 break
 
             self.world.stepSimulation(1, 30)
-            for p in self.players:
+            for p in self.players.keys():
                 player = self.players[p]
                 velocity = player.body.getLinearVelocity()
                 speed = velocity.length()
@@ -281,10 +284,10 @@ class Arena(object):
         self.started = False
         self.greenlets['start'] = self.start
         print("end")
-        gevent.sleep()
+        #gevent.sleep()
 
     def spawn_greenlets(self):
-        for greenlet in self.greenlets:
+        for greenlet in self.greenlets.keys():
             #if len(self.players) >= self.min_players:
             if len(self.players) >= 1:
                 gevent.spawn(self.greenlets[greenlet])
@@ -303,13 +306,14 @@ class Arena(object):
                 'next game will start in {} seconds'.format(countdown))
             countdown -= 1
             gevent.sleep(1)
-        self.finished.clear()
+        #self.finished.clear()
         self.players = {}
         if len(self.waiting_players) > 0:
             for player in self.waiting_players:
                 self.players[player.name] = player
                 if len(self.players) >= self.max_players:
                     break
+        self.finished.clear()
         self.broadcast('waiting for players')
 
 
@@ -318,12 +322,31 @@ class Player(Box):
     def __init__(self, game, name, avatar, fd, x, y, z, r, color, scale=5, max_speed=80):
         self.size_x = 30 
         self.size_y = 35
-        self.size_z = 45 
+        self.size_z = 45
         super(Player, self).__init__(game, 900.0, self.size_x, self.size_y, self.size_z, x, y, z, r, 0.5)
         self.name = name
         self.avatar = avatar
         self.fd = fd
-
+        self.tuning = VehicleTuning()
+        self.vehicle_ray_caster = DefaultVehicleRaycaster(game.world)
+        self.vehicle = RaycastVehicle(self.tuning, self.body, self.vehicle_ray_caster)
+        #self.game.world.addVehicle(self.vehicle)
+        wheel_width = 1
+        wheel_radius = 1
+        wheel_direction = Vector3(0, -1, 0)
+        wheel_axle = Vector3(-1, 0, 0)
+        suspension_rest_length = 0.6
+        is_front_wheel = True 
+        connection_height = 1.8
+        connection_point = Vector3(1-(0.3*wheel_width), connection_height, 2*1-wheel_radius)
+        self.vehicle.addWheel(connection_point, wheel_direction, wheel_axle, suspension_rest_length, wheel_radius, self.tuning, is_front_wheel)
+        connection_point = Vector3(-1+(0.3*wheel_width), connection_height, 2*1-wheel_radius)
+        self.vehicle.addWheel(connection_point, wheel_direction, wheel_axle, suspension_rest_length, wheel_radius, self.tuning, is_front_wheel)
+        is_front_wheel = False
+        connection_point = Vector3(-1+(0.3*wheel_width), connection_height, -2*1+wheel_radius)
+        self.vehicle.addWheel(connection_point, wheel_direction, wheel_axle, suspension_rest_length, wheel_radius, self.tuning, is_front_wheel)
+        connection_point = Vector3(1-(0.3*wheel_width), connection_height, -2*1+wheel_radius)
+        self.vehicle.addWheel(connection_point, wheel_direction, wheel_axle, suspension_rest_length, wheel_radius, self.tuning, is_front_wheel)
         self.last_msg = None
 
         self.scale = scale
@@ -454,7 +477,7 @@ class Robotab(Arena):
                 uwsgi.websocket_send(
                     "arena:hey {}, wait for next game".format(player.name))
                 player.wait_for_game()
-                del self.waiting_players[player.name]
+                self.waiting_players.remove(player)
             else:
                 self.players[player.name] = player
 
@@ -462,7 +485,7 @@ class Robotab(Arena):
 
             player.update_gfx()
 
-            for p in self.players:
+            for p in self.players.keys():
                 uwsgi.websocket_send(self.players[p].last_msg)
 
             while True:
