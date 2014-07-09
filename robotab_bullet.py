@@ -160,10 +160,21 @@ class Arena(object):
 
     def cmd_handler(self, player, cmd):
         if cmd == 'rl':
-            q = Quaternion(0, 0.05, 0, 1) * player.trans.getRotation()
-            player.trans.setRotation(q)
-            player.body.activate(True)
-            player.body.setCenterOfMassTransform(player.trans)
+            player.vehicle.setBrake(0, 0)
+            player.vehicle.setBrake(0, 1)
+            player.vehicle.setBrake(0, 2)
+            player.vehicle.setBrake(0, 3)
+            player.vehicle.applyEngineForce(10000.0, 0)
+            player.vehicle.applyEngineForce(-10000.0, 1)
+            player.vehicle.applyEngineForce(10000.0, 2)
+            player.vehicle.applyEngineForce(-10000.0, 3)    
+            player.is_accelerating = True
+        
+            #q = Quaternion(0, 0.05, 0, 1) * player.trans.getRotation()
+            #player.trans.setRotation(q)
+            #player.body.activate(True)
+            #player.body.setCenterOfMassTransform(player.trans)
+
             #player.body.activate(True)
             #player.body.setWorldTransform(player.trans)
             #orientation = player.body.getOrientation()
@@ -174,10 +185,20 @@ class Arena(object):
             return True
 
         if cmd == 'rr':
-            q = Quaternion(0, -0.05, 0, 1) * player.trans.getRotation()
-            player.trans.setRotation(q)
-            player.body.activate(True)
-            player.body.setCenterOfMassTransform(player.trans)
+            player.setBrake(0, 0)
+            player.setBrake(0, 1)
+            player.setBrake(0, 2)
+            player.setBrake(0, 3)
+            player.vehicle.applyEngineForce(-10000.0, 0)
+            player.vehicle.applyEngineForce(10000.0, 1)
+            player.vehicle.applyEngineForce(-10000.0, 2)
+            player.vehicle.applyEngineForce(10000.0, 3)
+            player.is_accelerating = True
+            #q = Quaternion(0, -0.05, 0, 1) * player.trans.getRotation()
+            #player.trans.setRotation(q)
+            #player.body.activate(True)
+            #player.body.setCenterOfMassTransform(player.trans)
+
             #orientation = player.body.getOrientation()
             #v = Vector3(0, -1000, 0).rotate(
             #    orientation.getAxis(), orientation.getAngle())
@@ -186,22 +207,42 @@ class Arena(object):
             return True
 
         if cmd == 'fw':
-            #player.vehicle.applyEngineForce(100000.0, 2)
-            #player.vehicle.applyEngineForce(100000.0, 3)
-
-            orientation = player.body.getOrientation()
-            v = Vector3(0, 0, 6000).rotate(
-                orientation.getAxis(), orientation.getAngle())
-            player.body.activate(True)
-            player.body.applyCentralForce(v)
+            player.vehicle.setBrake(0, 0)
+            player.vehicle.setBrake(0, 1)
+            player.vehicle.setBrake(0, 2)
+            player.vehicle.setBrake(0, 3)
+            player.vehicle.applyEngineForce(1000.0, 0)
+            player.vehicle.applyEngineForce(1000.0, 1)
+            player.vehicle.applyEngineForce(1000.0, 2)
+            player.vehicle.applyEngineForce(1000.0, 3)
+            player.is_accelerating = True
+            #player.vehicle.setBrake(0, 0)
+            #player.vehicle.setBrake(0, 1)
+            #player.vehicle.setBrake(0, 2)
+            #player.vehicle.setBrake(0, 3)
+           
+            #orientation = player.body.getOrientation()
+            #v = Vector3(0, 0, 6000).rotate(
+            #    orientation.getAxis(), orientation.getAngle())
+            #player.body.activate(True)
+            #player.body.applyCentralForce(v)
             return True
 
         if cmd == 'bw':
-            orientation = player.body.getOrientation()
-            v = Vector3(0, 0, -6000).rotate(
-                orientation.getAxis(), orientation.getAngle())
-            player.body.activate(True)
-            player.body.applyCentralImpulse(v)
+            player.vehicle.setBrake(0, 0)
+            player.vehicle.setBrake(0, 1)
+            player.vehicle.setBrake(0, 2)
+            player.vehicle.setBrake(0, 3)
+            player.vehicle.applyEngineForce(-1000.0, 0)
+            player.vehicle.applyEngineForce(-1000.0, 1)
+            player.vehicle.applyEngineForce(-1000.0, 2)
+            player.vehicle.applyEngineForce(-1000.0, 3)
+            player.is_accelerating = True
+            #orientation = player.body.getOrientation()
+            #v = Vector3(0, 0, -6000).rotate(
+            #    orientation.getAxis(), orientation.getAngle())
+            #player.body.activate(True)
+            #player.body.applyCentralImpulse(v)
             return True
 
         return False
@@ -224,15 +265,24 @@ class Arena(object):
             self.world.stepSimulation(1, 30)
             for p in self.players.keys():
                 player = self.players[p]
-                velocity = player.body.getLinearVelocity()
-                speed = velocity.length()
-                if speed > player.max_speed:
-                    new_speed = player.max_speed / speed
-                    velocity = Vector3(
-                        new_speed * velocity.getX(),
-                        new_speed * velocity.getY(),
-                        new_speed * velocity.getZ())
-                    player.body.setLinearVelocity(velocity)
+                if not player.is_accelerating:
+                    pass
+                    player.vehicle.setBrake(100, 0)
+                    player.vehicle.setBrake(100, 1)
+                    player.vehicle.setBrake(100, 2)
+                    player.vehicle.setBrake(100, 3)
+                else:
+                    player.is_accelerating = False
+                    velocity = player.body.getLinearVelocity()
+                    speed = velocity.length()
+                    if speed > player.max_speed:
+                        new_speed = player.max_speed / speed
+                        velocity = Vector3(
+                            new_speed * velocity.getX(),
+                            new_speed * velocity.getY(),
+                            new_speed * velocity.getZ())
+                        player.body.setLinearVelocity(velocity)
+                   
                 if player.cmd:
                     self.cmd_handler(player, player.cmd)
                     player.cmd = None
@@ -318,48 +368,37 @@ class Arena(object):
 
 class Player(Box):
 
-    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=80):
+    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=50):
         self.sc_x = 5
         self.sc_y = 5
         self.sc_z = 5
-        super(Player, self).__init__(game, 900.0, 6, 7, 9, x, y, z, r, 0.5, self.sc_x, self.sc_y, self.sc_z)
+        super(Player, self).__init__(game, 900.0, 6, 6.5, 9, x, y, z, r, 0.5, self.sc_x, self.sc_y, self.sc_z)
         self.name = name
         self.avatar = avatar
         self.fd = fd
         self.tuning = VehicleTuning()
         self.vehicle_ray_caster = DefaultVehicleRaycaster(game.world)
         self.vehicle = RaycastVehicle(self.tuning, self.body, self.vehicle_ray_caster)
-        #self.game.world.addVehicle(self.vehicle)
-        wheel_width = 1
-        wheel_radius = 1
-        wheel_direction = Vector3(0, -1, 0)
-        wheel_axle = Vector3(-1, 0, 0)
-        suspension_rest_length = 0.6
-        is_front_wheel = True 
-        connection_height = 1.8
-        connection_point = Vector3(1-(0.3*wheel_width), connection_height, 2*1-wheel_radius)
-        self.vehicle.addWheel(connection_point, wheel_direction, wheel_axle, suspension_rest_length, wheel_radius, self.tuning, is_front_wheel)
-        connection_point = Vector3(-1+(0.3*wheel_width), connection_height, 2*1-wheel_radius)
-        self.vehicle.addWheel(connection_point, wheel_direction, wheel_axle, suspension_rest_length, wheel_radius, self.tuning, is_front_wheel)
-        is_front_wheel = False
-        connection_point = Vector3(-1+(0.3*wheel_width), connection_height, -2*1+wheel_radius)
-        self.vehicle.addWheel(connection_point, wheel_direction, wheel_axle, suspension_rest_length, wheel_radius, self.tuning, is_front_wheel)
-        connection_point = Vector3(1-(0.3*wheel_width), connection_height, -2*1+wheel_radius)
-        self.vehicle.addWheel(connection_point, wheel_direction, wheel_axle, suspension_rest_length, wheel_radius, self.tuning, is_front_wheel)
+        self.body.setActivationState(4)
+        self.game.world.addAction(self.vehicle)
+        self.vehicle.setCoordinateSystem(0, 1, 2)
+        self.vehicle.addWheel(Vector3(-29.8, -31, 35), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, True) 
+        self.vehicle.addWheel(Vector3(29.8, -31, 35), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, True)
+        self.vehicle.addWheel(Vector3(-29.8, -31, -35), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
+        self.vehicle.addWheel(Vector3(29.8, -31, -35), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
+        self.is_accelerating = False 
         self.last_msg = None
+        self.cmd = None
 
-        # self.attack = 0
+        self.color = color
+        self.max_speed = max_speed
         self.energy = 100.0
         self.arena = "arena{}".format(uwsgi.worker_id())
         self.redis = redis.StrictRedis()
         self.channel = self.redis.pubsub()
         self.channel.subscribe(self.arena)
         self.redis_fd = self.channel.connection._sock.fileno()
-
-        self.cmd = None
-        self.max_speed = max_speed
         # self.bullet = Bullet(self.game, self)
-        self.color = color
 
         # check if self.energy is 0, in such a case
         # trigger the kill procedure removing the player from the list
