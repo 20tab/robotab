@@ -27,10 +27,10 @@ class StaticBox(object):
 
 class Box(object):
 
-    def __init__(self, game, mass, size_x, size_y, size_z, x, y, z, r, friction=0.5):
+    def __init__(self, game, mass, size_x, size_y, size_z, x, y, z, r, friction=0.5, sc_x=1, sc_y=1, sc_z=1):
         self.game = game
         self.mass = mass
-        self.shape = BoxShape(Vector3(size_x, size_y, size_z))
+        self.shape = BoxShape(Vector3(size_x*sc_x, size_y*sc_y, size_z*sc_z))
         q = Quaternion(0, 0, 0, 1)
         q.setRotation(Vector3(0.0, 1.0, 0.0), r)
         self.motion_state = DefaultMotionState(
@@ -278,7 +278,6 @@ class Arena(object):
             #     coordinates = self.bonus_malus_spawn_points.pop(randrange(len(self.bonus_malus_spawn_points)))
             #     choice(self.bonus_malus)(self, bm_counter, *(coordinates))
             #     bm_counter += 1
-            print("\n\nbm\n\n")
             self.finished.wait(timeout=10.0)
         self.broadcast("end")
         self.started = False
@@ -300,7 +299,6 @@ class Arena(object):
         self.players[winner_name].end('winner')
 
     def restart_game(self, countdown=15):
-        countdown = countdown
         while countdown > 0:
             self.broadcast(
                 'next game will start in {} seconds'.format(countdown))
@@ -308,6 +306,7 @@ class Arena(object):
             gevent.sleep(1)
         #self.finished.clear()
         self.players = {}
+        print('\n\n', self.waiting_players, '\n\n')
         if len(self.waiting_players) > 0:
             for player in self.waiting_players:
                 self.players[player.name] = player
@@ -319,11 +318,11 @@ class Arena(object):
 
 class Player(Box):
 
-    def __init__(self, game, name, avatar, fd, x, y, z, r, color, scale=5, max_speed=80):
-        self.size_x = 30 
-        self.size_y = 35
-        self.size_z = 45
-        super(Player, self).__init__(game, 900.0, self.size_x, self.size_y, self.size_z, x, y, z, r, 0.5)
+    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=80):
+        self.sc_x = 5
+        self.sc_y = 5
+        self.sc_z = 5
+        super(Player, self).__init__(game, 900.0, 6, 7, 9, x, y, z, r, 0.5, self.sc_x, self.sc_y, self.sc_z)
         self.name = name
         self.avatar = avatar
         self.fd = fd
@@ -348,8 +347,6 @@ class Player(Box):
         connection_point = Vector3(1-(0.3*wheel_width), connection_height, -2*1+wheel_radius)
         self.vehicle.addWheel(connection_point, wheel_direction, wheel_axle, suspension_rest_length, wheel_radius, self.tuning, is_front_wheel)
         self.last_msg = None
-
-        self.scale = scale
 
         # self.attack = 0
         self.energy = 100.0
@@ -398,8 +395,7 @@ class Player(Box):
         rot_w = quaternion.getW()
         msg = ('{name}:{pos_x},{pos_y},{pos_z},'
                '{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},{rot_w:.2f},'
-               '{energy:.1f},{avatar},{size_x},{size_y},{size_z},'
-               '{scale},{color}').format(
+               '{energy:.1f},{avatar},{sc_x},{sc_y},{sc_z},{color}').format(
             name=self.name,
             pos_x=int(pos_x),
             pos_y=int(pos_y),
@@ -410,10 +406,9 @@ class Player(Box):
             rot_w=rot_w,
             energy=self.energy,
             avatar=self.avatar,
-            size_x=self.size_x,
-            size_y=self.size_y,
-            size_z=self.size_z,
-            scale=self.scale,
+            sc_x=self.sc_x,
+            sc_y=self.sc_y,
+            sc_z=self.sc_z,
             color=self.color
         )
         if msg != self.last_msg:

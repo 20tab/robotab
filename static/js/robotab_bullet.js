@@ -165,11 +165,10 @@ function ws_recv(e) {
             parseFloat(args[6]),    //rot_w
             parseFloat(args[7]),    //energy
             parseInt(args[8]),      //avatar
-            parseFloat(args[9]),    //size_x
-            parseFloat(args[10]),   //size_y
-            parseFloat(args[11]),   //size_z
-            parseFloat(args[12]),   //scale
-            parseInt(args[13]));    //color
+            parseFloat(args[9]),    //sc_x
+            parseFloat(args[10]),   //sc_y
+            parseFloat(args[11]),   //sc_z
+            parseInt(args[12]));    //color
             // player = players[items[0]];
         return;
     }
@@ -558,7 +557,7 @@ function update(td) {
     }
 }
 
-function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, size_x, size_y, size_z, scale, color) {
+function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, sc_x, sc_y, sc_z, color) {
     // console.log('add_player');
     if (avatar == 1){
         players[name] = objects[0].ref.clone();
@@ -569,7 +568,8 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
     players[name].children[0].material = players[name].children[0].material.clone()
     players[name].children[0].material.color.setHex(color);
     players[name].name = name;
-    players[name].scale.set(scale, scale, scale);
+    console.log(sc_x, sc_y, sc_z);
+    players[name].scale.set(sc_x, sc_y, sc_z);
     players[name].energy = energy;
     players[name].name_and_energy = name + ': ' + energy;
     players[name].bonus = '';
@@ -624,7 +624,7 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
     material.color.setHex(color);
     var bullet = new THREE.Mesh( geometry, material );
 
-    bullet.scale.set(scale, scale, scale);
+    bullet.scale.set(sc_x, sc_y, sc_z);
     //bullet.children[0].visible = false;
     bullet.visible = false;
     //var axis = new THREE.Vector3(0, 1, 0);
