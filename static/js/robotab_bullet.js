@@ -20,7 +20,7 @@ var ramps = [];
 var invisible_walls = [];
 var posters = [];
 var bonus_malus = {};
-
+var moving_sphere == undefined;
 var healtbar;
 var health;
 var particles, particleSystem;
@@ -162,6 +162,13 @@ function ws_recv(e) {
         return;
     }
     if (items[0] == 'sphere'){
+        var args = items[1].split(',');
+        if (moving_sphere == undefined){
+            add_sphere(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
+        }
+        else{
+            //TODO update sphere
+        }
     }
 
     var player = players[items[0]];
@@ -741,6 +748,23 @@ function add_bonus_malus(id, bm_type, x, y, z){
 function remove_bonus_malus(id){
     scene.remove(bonus_malus[id]);
     delete bonus_malus[id];
+}
+
+function add_sphere(radius, x, y, z, rot_x, rot_y, rot_z, rot_w){
+    var geometry = new THREE.Sphere(radius, 16, 16);
+    var sphereTexture = new THREE.ImageUtils.loadTexture('static/img/skel.jpg');
+    sphereTexture.repeat.set(10, 10);
+    sphereTexture.wrapS = sphereTexture.wrapT = THREE.RepeatWrapping;
+    var sphereMaterial = new THREE.MeshPhongMaterial({map: sphereTexture});
+    moving_sphere = new THREE.Mesh(geometry, sphereMaterial);
+    moving_sphere.position.set(x, y, z);
+    moving_sphere.rotation.setFromQuaternion(
+                new THREE.Quaternion(
+                    rot_x,
+                    rot_y,
+                    rot_z,
+                    rot_w));
+    scene.add(moving_sphere);
 }
 
 function add_ground(size_x, size_y, size_z, x, y, z, r) {

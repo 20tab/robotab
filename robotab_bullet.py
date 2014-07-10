@@ -13,8 +13,9 @@ from bulletphysics import *
 class Sphere(object):
 
     def __init__(self, world):
+        self.radius = 50
         self.sphere_mass = 400.0
-        self.sphere_shape = SphereShape(50)
+        self.sphere_shape = SphereShape(self.radius)
         q = Quaternion(0, 0, 0, 1)
         q.setRotation(Vector3(0.0, 1.0, 0.0), 0.0)
         self.sphere_motion_state = DefaultMotionState(
@@ -26,7 +27,7 @@ class Sphere(object):
         self.sphere_body = RigidBody(sphere_construction_info)
         world.addRigidBody(self.sphere_body)
         self.sphere_trans = Transform()
-        self.sphere_origin = self.trans.getOrigin()
+        self.sphere_origin = self.sphere_trans.getOrigin()
         self.last_msg = None
         self.arena = "arena{}".format(uwsgi.worker_id())
         self.redis = redis.StrictRedis()
@@ -47,8 +48,9 @@ class Sphere(object):
         rot_y = round(quaternion.getY(), 2)
         rot_z = round(quaternion.getZ(), 2)
         rot_w = round(quaternion.getW(), 2)
-        msg = ('sphere:{pos_x},{pos_y},{pos_z},'
+        msg = ('sphere:{radius}:{pos_x},{pos_y},{pos_z},'
                '{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},{rot_w:.2f},').format(
+            radius=self.radius,
             pos_x=int(pos_x),
             pos_y=int(pos_y),
             pos_z=int(pos_z),
