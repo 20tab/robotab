@@ -77,7 +77,7 @@ class Arena(object):
         self.walls_coordinates = (
             #sc_x,  sc_y,   sc_z,     x,       y,     z,            r
            (200,     100,     50,     0,     150, -1950,            0),
-           (200,     100,     50, -1950,     150,     0, -math.pi / 2),
+           (111,     100,     50, -1950,     150,     0, -math.pi / 2),
            (200,     100,     50,  1950,     150,     0, -math.pi / 2),
            (200,     100,     50,     0,     150,  1950,            0),
 
@@ -98,16 +98,16 @@ class Arena(object):
             #    x,     y,   z,               r,    color
             #(    0,  1650,         math.pi),
             #(    0, -1650,               0),
-            ( -935,    50,   935,  3 * math.pi / 4, 0x7777AA),
-            (  935,    50,   935,  5 * math.pi / 4, 0x770000),
-            (  935,    50,  -935,  7 * math.pi / 4, 0x007700),
-            ( -935,    50,  -935,      math.pi / 4, 0x777700),
-            (-1650,    50,  1650,  3 * math.pi / 4, 0xAA00AA),
+            ( -935,    35,   935,  3 * math.pi / 4, 0x7777AA),
+            (  935,    35,   935,  5 * math.pi / 4, 0x770000),
+            (  935,    35,  -935,  7 * math.pi / 4, 0x007700),
+            ( -935,    35,  -935,      math.pi / 4, 0x777700),
+            (-1650,    35,  1650,  3 * math.pi / 4, 0xAA00AA),
             #(-1650,     0,     math.pi / 2),
             #( 1650,     0, 3 * math.pi / 2),
-            ( 1650,    50,  1650,  5 * math.pi / 4, 0x007777),
-            ( 1650,    50, -1650,  7 * math.pi / 4, 0x000077),
-            (-1650,    50, -1650,      math.pi / 4, 0xFFAA77),
+            ( 1650,    35,  1650,  5 * math.pi / 4, 0x007777),
+            ( 1650,    35, -1650,  7 * math.pi / 4, 0x000077),
+            (-1650,    35, -1650,      math.pi / 4, 0xFFAA77),
 
         )
 
@@ -118,12 +118,12 @@ class Arena(object):
         self.world = DiscreteDynamicsWorld(
             self.dispatcher, self.broadphase,
             self.solver, self.collisionConfiguration)
-        self.world.setGravity(Vector3(0, -9.81, 0))
+        self.world.setGravity(Vector3(0, -10, 0))
 
         self.ground = StaticBox(self.world, *self.ground_coordinates)
 
         for wall_c in self.walls_coordinates:
-            wall = StaticBox(self.world, wall_c[0], wall_c[1], 6, wall_c[3], 0, wall_c[5], wall_c[6], 5.0, 10, 1, 6)
+            wall = StaticBox(self.world, wall_c[0], wall_c[1], 6, wall_c[3], 0, wall_c[5], wall_c[6], 0.0, 10, 1, 6)
             self.walls.append(wall)
 
         self.arena = "arena{}".format(uwsgi.worker_id())
@@ -185,10 +185,10 @@ class Arena(object):
             return True
 
         if cmd == 'rr':
-            player.setBrake(0, 0)
-            player.setBrake(0, 1)
-            player.setBrake(0, 2)
-            player.setBrake(0, 3)
+            player.vehicle.setBrake(0, 0)
+            player.vehicle.setBrake(0, 1)
+            player.vehicle.setBrake(0, 2)
+            player.vehicle.setBrake(0, 3)
             player.vehicle.applyEngineForce(-10000.0, 0)
             player.vehicle.applyEngineForce(10000.0, 1)
             player.vehicle.applyEngineForce(-10000.0, 2)
@@ -211,10 +211,10 @@ class Arena(object):
             player.vehicle.setBrake(0, 1)
             player.vehicle.setBrake(0, 2)
             player.vehicle.setBrake(0, 3)
-            player.vehicle.applyEngineForce(1000.0, 0)
-            player.vehicle.applyEngineForce(1000.0, 1)
-            player.vehicle.applyEngineForce(1000.0, 2)
-            player.vehicle.applyEngineForce(1000.0, 3)
+            player.vehicle.applyEngineForce(2000.0, 0)
+            player.vehicle.applyEngineForce(2000.0, 1)
+            player.vehicle.applyEngineForce(2000.0, 2)
+            player.vehicle.applyEngineForce(2000.0, 3)
             player.is_accelerating = True
             #player.vehicle.setBrake(0, 0)
             #player.vehicle.setBrake(0, 1)
@@ -261,16 +261,18 @@ class Arena(object):
                 self.finished.set()
                 self.restart_game()
                 break
-
             self.world.stepSimulation(1, 30)
             for p in self.players.keys():
                 player = self.players[p]
+                player.body.activate(True)
+                position = player.trans.getOrigin()
+                if position.getY() < -1000:
+                    player.end('fallen')
                 if not player.is_accelerating:
-                    pass
-                    player.vehicle.setBrake(100, 0)
-                    player.vehicle.setBrake(100, 1)
-                    player.vehicle.setBrake(100, 2)
-                    player.vehicle.setBrake(100, 3)
+                    player.vehicle.applyEngineForce(0, 0)
+                    player.vehicle.applyEngineForce(0, 1)
+                    player.vehicle.applyEngineForce(0, 2)
+                    player.vehicle.applyEngineForce(0, 3)
                 else:
                     player.is_accelerating = False
                     velocity = player.body.getLinearVelocity()
@@ -282,7 +284,6 @@ class Arena(object):
                             new_speed * velocity.getY(),
                             new_speed * velocity.getZ())
                         player.body.setLinearVelocity(velocity)
-                   
                 if player.cmd:
                     self.cmd_handler(player, player.cmd)
                     player.cmd = None
@@ -368,7 +369,7 @@ class Arena(object):
 
 class Player(Box):
 
-    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=50):
+    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=30):
         self.sc_x = 5
         self.sc_y = 5
         self.sc_z = 5
@@ -379,7 +380,7 @@ class Player(Box):
         self.tuning = VehicleTuning()
         self.vehicle_ray_caster = DefaultVehicleRaycaster(game.world)
         self.vehicle = RaycastVehicle(self.tuning, self.body, self.vehicle_ray_caster)
-        self.body.setActivationState(4)
+        #self.body.setActivationState(4)
         self.game.world.addAction(self.vehicle)
         self.vehicle.setCoordinateSystem(0, 1, 2)
         self.vehicle.addWheel(Vector3(-29.8, -31, 35), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, True) 
@@ -428,10 +429,10 @@ class Player(Box):
         pos_y = self.origin.getY()
         pos_z = self.origin.getZ()
         quaternion = self.trans.getRotation()
-        rot_x = quaternion.getX()
-        rot_y = quaternion.getY()
-        rot_z = quaternion.getZ()
-        rot_w = quaternion.getW()
+        rot_x = round(quaternion.getX(), 2)
+        rot_y = round(quaternion.getY(), 2)
+        rot_z = round(quaternion.getZ(), 2)
+        rot_w = round(quaternion.getW(), 2)
         msg = ('{name}:{pos_x},{pos_y},{pos_z},'
                '{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},{rot_w:.2f},'
                '{energy:.1f},{avatar},{sc_x},{sc_y},{sc_z},{color}').format(
@@ -439,10 +440,10 @@ class Player(Box):
             pos_x=int(pos_x),
             pos_y=int(pos_y),
             pos_z=int(pos_z),
-            rot_x=rot_x,
-            rot_y=rot_y,
-            rot_z=rot_z,
-            rot_w=rot_w,
+            rot_x=rot_x + 0.0,
+            rot_y=rot_y + 0.0,
+            rot_z=rot_z + 0.0,
+            rot_w=rot_w + 0.0,
             energy=self.energy,
             avatar=self.avatar,
             sc_x=self.sc_x,
