@@ -10,6 +10,59 @@ import math
 from bulletphysics import *
 
 
+class Sphere(object):
+
+    def __init__(self, world):
+        self.sphere_mass = 400.0
+        self.sphere_shape = SphereShape(50)
+        q = Quaternion(0, 0, 0, 1)
+        q.setRotation(Vector3(0.0, 1.0, 0.0), 0.0)
+        self.sphere_motion_state = DefaultMotionState(
+            Transform(q, Vector3(0, 0, 0)))
+        self.sphere_inertia = Vector3(0, 0, 0)
+        self.sphere_shape.calculateLocalInertia(self.sphere_mass, self.sphere_inertia)
+        sphere_construction_info = RigidBodyConstructionInfo(
+            self.sphere_mass, self.sphere_motion_state, self.sphere_shape, self.sphere_inertia)
+        self.sphere_body = RigidBody(sphere_construction_info)
+        world.addRigidBody(self.sphere_body)
+        self.sphere_trans = Transform()
+        self.sphere_origin = self.trans.getOrigin()
+        self.last_msg = None
+        self.arena = "arena{}".format(uwsgi.worker_id())
+        self.redis = redis.StrictRedis()
+        self.channel = self.redis.pubsub()
+        self.channel.subscribe(self.arena)
+        self.redis_fd = self.channel.connection._sock.fileno()
+
+    def send_all(self, msg):
+        self.redis.publish(self.arena, msg)
+
+    def update_gfx(self):
+        self.motion_state.getWorldTransform(self.trans)
+        pos_x = self.origin.getX()
+        pos_y = self.origin.getY()
+        pos_z = self.origin.getZ()
+        quaternion = self.trans.getRotation()
+        rot_x = round(quaternion.getX(), 2)
+        rot_y = round(quaternion.getY(), 2)
+        rot_z = round(quaternion.getZ(), 2)
+        rot_w = round(quaternion.getW(), 2)
+        msg = ('sphere:{pos_x},{pos_y},{pos_z},'
+               '{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},{rot_w:.2f},').format(
+            pos_x=int(pos_x),
+            pos_y=int(pos_y),
+            pos_z=int(pos_z),
+            rot_x=rot_x + 0.0,
+            rot_y=rot_y + 0.0,
+            rot_z=rot_z + 0.0,
+            rot_w=rot_w + 0.0,
+        )
+        if msg != self.last_msg:
+            #print msg
+            self.send_all(msg)
+            self.last_msg = msg
+
+
 class StaticBox(object):
 
     def __init__(self, world, size_x, size_y, size_z, x, y, z, r, friction=0.5, sc_x=1, sc_y=1, sc_z=1):
@@ -96,22 +149,22 @@ class Arena(object):
         )
         self.walls_coordinates = (
             #sc_x,  sc_y,   sc_z,     x,       y,     z,            r
-           (150,     100,     50,     0,     150, -1950,            0),
-           (200,     100,     50, -1950,     150,     0, -math.pi / 2),
-           (200,     100,     50,  1950,     150,     0, -math.pi / 2),
-           (200,     100,     50,     0,     150,  1950,            0),
+           (150,     50,     50,     0,     215, -1950,            0),
+           (200,     50,     50, -1950,     215,     0, -math.pi / 2),
+           (200,     50,     50,  1950,     215,     0, -math.pi / 2),
+           (200,     50,     50,     0,     215,  1950,            0),
 
-           ( 50,      50,     30,  -730,     150, -1200,            0),
-           ( 50,      50,     30,   730,     150, -1200,            0),
+           ( 50,      30,     30,  -730,     125, -1200,            0),
+           ( 50,      30,     30,   730,     125, -1200,            0),
 
-           ( 50,      50,     30, -1200,     150,  -730, -math.pi / 2),
-           ( 50,      50,     30, -1200,     150,   730, -math.pi / 2),
+           ( 50,      30,     30, -1200,     125,  -730, -math.pi / 2),
+           ( 50,      30,     30, -1200,     125,   730, -math.pi / 2),
 
-           ( 50,      50,     30,  1200,     150,  -730, -math.pi / 2),
-           ( 50,      50,     30,  1200,     150,   730, -math.pi / 2),
+           ( 50,      30,     30,  1200,     125,  -730, -math.pi / 2),
+           ( 50,      30,     30,  1200,     125,   730, -math.pi / 2),
 
-           ( 50,      50,     30,  -730,     150,  1200,            0),
-           ( 50,      50,     30,   730,     150,  1200,            0),
+           ( 50,      30,     30,  -730,     125,  1200,            0),
+           ( 50,      30,     30,   730,     125,  1200,            0),
         )
         
         self.ramps_coordinates = (
@@ -181,6 +234,9 @@ class Arena(object):
 
         self.spawn_iterator = iter(self.spawn_points)
 
+        self.sphere = Sphere(self.world)
+
+
     def broadcast(self, msg):
         self.redis.publish(self.arena, 'arena:{}'.format(msg))
 
@@ -198,7 +254,7 @@ class Arena(object):
             player.is_accelerating = True
             player.is_braking = False
         
-            #q = Quaternion(0, 0.05, 0, 1) * player.trans.getRotation()
+
             #player.trans.setRotation(q)
             #player.body.activate(True)
             #player.body.setCenterOfMassTransform(player.trans)
@@ -281,6 +337,7 @@ class Arena(object):
                 self.restart_game()
                 break
             self.world.stepSimulation(1, 30)
+            self.sphere.update_gfx()
             for p in self.players.keys():
                 try:
                    player = self.players[p]
@@ -413,7 +470,6 @@ class Player(object):
         self.shape.calculateLocalInertia(self.mass, self.inertia)
         construction_info = RigidBodyConstructionInfo(
             self.mass, self.motion_state, self.shape, self.inertia)
-        #construction_info.m_friction = friction
         self.chassis = RigidBody(construction_info)
         self.game.world.addRigidBody(self.chassis)
         self.trans = Transform()
@@ -429,8 +485,6 @@ class Player(object):
         self.vehicle.setCoordinateSystem(0, 1, 2)
         self.vehicle.addWheel(Vector3(-29.8, -31.5, 43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False) 
         self.vehicle.addWheel(Vector3(29.8, -31.5, 43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
-        #self.vehicle.addWheel(Vector3(-29.8, -31.5, 0), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
-        #self.vehicle.addWheel(Vector3(29.8, -31.5, 0), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
         self.vehicle.addWheel(Vector3(-29.8, -31.5, -43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
         self.vehicle.addWheel(Vector3(29.8, -31.5, -43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
         self.is_accelerating = False 
@@ -576,6 +630,8 @@ class Robotab(Arena):
 
             for p in self.players.keys():
                 uwsgi.websocket_send(self.players[p].last_msg)
+           
+            uwsgi.websocket_send(self.sphere.last_msg)               
 
             while True:
                 ready = gevent.select.select(

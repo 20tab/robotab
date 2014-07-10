@@ -161,6 +161,8 @@ function ws_recv(e) {
         posters = items[1].split(';');
         return;
     }
+    if (items[0] == 'sphere'){
+    }
 
     var player = players[items[0]];
     var cmd = items[1];
