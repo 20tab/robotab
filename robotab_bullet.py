@@ -46,6 +46,20 @@ class Box(object):
         self.origin = self.trans.getOrigin()
 
 
+class Ramp(object):
+     
+     def __init__(self, world, size_x, size_y, size_z, x, y, z, r, friction=0.5, sc_x=1, sc_y=1, sc_z=1):
+         self.shape = BoxShape(Vector3(size_x*sc_x, size_y*sc_y, size_z*sc_z))
+         q = Quaternion(0, 0, 0, 1)
+         q.setRotation(Vector3(1.0, 0.0, 0.0), r)
+         self.motion_state = DefaultMotionState(
+             Transform(q, Vector3(x, y, z)))
+         construction_info = RigidBodyConstructionInfo(
+             0, self.motion_state, self.shape, Vector3(0, 0, 0))
+         construction_info.m_friction = friction
+         self.body = RigidBody(construction_info)
+         world.addRigidBody(self.body)
+
 class Arena(object):
 
     def __init__(self, min_players=3, max_players=8, warmup=10):
@@ -73,11 +87,17 @@ class Arena(object):
         self.finished = gevent.event.Event()
         #self.warming_up = False
         self.walls = []
-        self.ground_coordinates = (2000, 1, 2000, 0, 0, 0, 0)
+        self.ramps = []
+        self.grounds = []
+        self.ground_coordinates = (
+            (2000, 1, 2000, 0, 0, 0, 0),
+            (2000, 1, 4000, 0, 361.5, -7350, 0),
+            (5000, 1, 8000, 0, -500, -1500, 0)
+        )
         self.walls_coordinates = (
             #sc_x,  sc_y,   sc_z,     x,       y,     z,            r
-           (200,     100,     50,     0,     150, -1950,            0),
-           (111,     100,     50, -1950,     150,     0, -math.pi / 2),
+           (150,     100,     50,     0,     150, -1950,            0),
+           (200,     100,     50, -1950,     150,     0, -math.pi / 2),
            (200,     100,     50,  1950,     150,     0, -math.pi / 2),
            (200,     100,     50,     0,     150,  1950,            0),
 
@@ -92,6 +112,11 @@ class Arena(object):
 
            ( 50,      50,     30,  -730,     150,  1200,            0),
            ( 50,      50,     30,   730,     150,  1200,            0),
+        )
+        
+        self.ramps_coordinates = (
+             (350, 10, 700, -1635, 172, -2679, math.pi/12),
+             (350, 10, 700, 1635, 172, -2679, math.pi/12),
         )
 
         self.spawn_points = (
@@ -120,12 +145,18 @@ class Arena(object):
             self.solver, self.collisionConfiguration)
         self.world.setGravity(Vector3(0, -10, 0))
 
-        self.ground = StaticBox(self.world, *self.ground_coordinates)
+        for ground_c in self.ground_coordinates:
+            ground = StaticBox(self.world, *ground_c)
+            self.grounds.append(ground)
+
+        #self.ground = StaticBox(self.world, *self.ground_coordinates)
 
         for wall_c in self.walls_coordinates:
             wall = StaticBox(self.world, wall_c[0], wall_c[1], 6, wall_c[3], 0, wall_c[5], wall_c[6], 0.0, 10, 1, 6)
             self.walls.append(wall)
-
+        for ramp_c in self.ramps_coordinates:
+            ramp = Ramp(self.world, *ramp_c)
+            self.ramps.append(ramp)
         self.arena = "arena{}".format(uwsgi.worker_id())
         self.redis = redis.StrictRedis()
         self.channel = self.redis.pubsub()
@@ -160,15 +191,12 @@ class Arena(object):
 
     def cmd_handler(self, player, cmd):
         if cmd == 'rl':
-            player.vehicle.setBrake(0, 0)
-            player.vehicle.setBrake(0, 1)
-            player.vehicle.setBrake(0, 2)
-            player.vehicle.setBrake(0, 3)
             player.vehicle.applyEngineForce(10000.0, 0)
             player.vehicle.applyEngineForce(-10000.0, 1)
             player.vehicle.applyEngineForce(10000.0, 2)
             player.vehicle.applyEngineForce(-10000.0, 3)    
             player.is_accelerating = True
+            player.is_braking = False
         
             #q = Quaternion(0, 0.05, 0, 1) * player.trans.getRotation()
             #player.trans.setRotation(q)
@@ -185,15 +213,12 @@ class Arena(object):
             return True
 
         if cmd == 'rr':
-            player.vehicle.setBrake(0, 0)
-            player.vehicle.setBrake(0, 1)
-            player.vehicle.setBrake(0, 2)
-            player.vehicle.setBrake(0, 3)
             player.vehicle.applyEngineForce(-10000.0, 0)
             player.vehicle.applyEngineForce(10000.0, 1)
             player.vehicle.applyEngineForce(-10000.0, 2)
             player.vehicle.applyEngineForce(10000.0, 3)
             player.is_accelerating = True
+            player.is_braking = False
             #q = Quaternion(0, -0.05, 0, 1) * player.trans.getRotation()
             #player.trans.setRotation(q)
             #player.body.activate(True)
@@ -207,15 +232,12 @@ class Arena(object):
             return True
 
         if cmd == 'fw':
-            player.vehicle.setBrake(0, 0)
-            player.vehicle.setBrake(0, 1)
-            player.vehicle.setBrake(0, 2)
-            player.vehicle.setBrake(0, 3)
             player.vehicle.applyEngineForce(2000.0, 0)
             player.vehicle.applyEngineForce(2000.0, 1)
             player.vehicle.applyEngineForce(2000.0, 2)
             player.vehicle.applyEngineForce(2000.0, 3)
             player.is_accelerating = True
+            player.is_braking = False
             #player.vehicle.setBrake(0, 0)
             #player.vehicle.setBrake(0, 1)
             #player.vehicle.setBrake(0, 2)
@@ -229,15 +251,12 @@ class Arena(object):
             return True
 
         if cmd == 'bw':
-            player.vehicle.setBrake(0, 0)
-            player.vehicle.setBrake(0, 1)
-            player.vehicle.setBrake(0, 2)
-            player.vehicle.setBrake(0, 3)
-            player.vehicle.applyEngineForce(-1000.0, 0)
-            player.vehicle.applyEngineForce(-1000.0, 1)
-            player.vehicle.applyEngineForce(-1000.0, 2)
-            player.vehicle.applyEngineForce(-1000.0, 3)
+            player.vehicle.applyEngineForce(-2000.0, 0)
+            player.vehicle.applyEngineForce(-2000.0, 1)
+            player.vehicle.applyEngineForce(-2000.0, 2)
+            player.vehicle.applyEngineForce(-2000.0, 3)
             player.is_accelerating = True
+            player.is_braking = False
             #orientation = player.body.getOrientation()
             #v = Vector3(0, 0, -6000).rotate(
             #    orientation.getAxis(), orientation.getAngle())
@@ -263,19 +282,23 @@ class Arena(object):
                 break
             self.world.stepSimulation(1, 30)
             for p in self.players.keys():
-                player = self.players[p]
-                player.body.activate(True)
+                try:
+                   player = self.players[p]
+                except:
+                   continue
+                #print('ciao')
+                #player.body.activate(True)
                 position = player.trans.getOrigin()
-                if position.getY() < -1000:
+                if position.getY() < -420:
                     player.end('fallen')
-                if not player.is_accelerating:
+                if not player.is_accelerating and not player.is_braking:
                     player.vehicle.applyEngineForce(0, 0)
                     player.vehicle.applyEngineForce(0, 1)
                     player.vehicle.applyEngineForce(0, 2)
                     player.vehicle.applyEngineForce(0, 3)
+                    player.is_braking = True
                 else:
-                    player.is_accelerating = False
-                    velocity = player.body.getLinearVelocity()
+                    velocity = player.chassis.getLinearVelocity()
                     speed = velocity.length()
                     if speed > player.max_speed:
                         new_speed = player.max_speed / speed
@@ -283,7 +306,8 @@ class Arena(object):
                             new_speed * velocity.getX(),
                             new_speed * velocity.getY(),
                             new_speed * velocity.getZ())
-                        player.body.setLinearVelocity(velocity)
+                        player.chassis.setLinearVelocity(velocity)
+                player.is_accelerating = False
                 if player.cmd:
                     self.cmd_handler(player, player.cmd)
                     player.cmd = None
@@ -367,27 +391,50 @@ class Arena(object):
         self.broadcast('waiting for players')
 
 
-class Player(Box):
+class Player(object):
 
-    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=30):
+    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=40):
         self.sc_x = 5
         self.sc_y = 5
         self.sc_z = 5
-        super(Player, self).__init__(game, 900.0, 6, 6.5, 9, x, y, z, r, 0.5, self.sc_x, self.sc_y, self.sc_z)
+        self.game = game
+        self.mass = 900.0 
+        self.shape = BoxShape(Vector3(6*self.sc_x, 6.5*self.sc_y, 9*self.sc_z))
+        self.compound = CompoundShape()
+        transform = Transform()
+        transform.setIdentity()
+        transform.setOrigin(Vector3(0, 0, 0))
+        self.compound.addChildShape(transform, self.shape)
+        q = Quaternion(0, 0, 0, 1)
+        q.setRotation(Vector3(0.0, 1.0, 0.0), r)
+        self.motion_state = DefaultMotionState(
+            Transform(q, Vector3(x, y, z)))
+        self.inertia = Vector3(0, 0, 0)
+        self.shape.calculateLocalInertia(self.mass, self.inertia)
+        construction_info = RigidBodyConstructionInfo(
+            self.mass, self.motion_state, self.shape, self.inertia)
+        #construction_info.m_friction = friction
+        self.chassis = RigidBody(construction_info)
+        self.game.world.addRigidBody(self.chassis)
+        self.trans = Transform()
+        self.origin = self.trans.getOrigin()
         self.name = name
         self.avatar = avatar
         self.fd = fd
         self.tuning = VehicleTuning()
         self.vehicle_ray_caster = DefaultVehicleRaycaster(game.world)
-        self.vehicle = RaycastVehicle(self.tuning, self.body, self.vehicle_ray_caster)
-        #self.body.setActivationState(4)
+        self.vehicle = RaycastVehicle(self.tuning, self.chassis, self.vehicle_ray_caster)
+        self.chassis.setActivationState(4)
         self.game.world.addAction(self.vehicle)
         self.vehicle.setCoordinateSystem(0, 1, 2)
-        self.vehicle.addWheel(Vector3(-29.8, -31, 35), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, True) 
-        self.vehicle.addWheel(Vector3(29.8, -31, 35), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, True)
-        self.vehicle.addWheel(Vector3(-29.8, -31, -35), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
-        self.vehicle.addWheel(Vector3(29.8, -31, -35), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
+        self.vehicle.addWheel(Vector3(-29.8, -31.5, 43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False) 
+        self.vehicle.addWheel(Vector3(29.8, -31.5, 43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
+        #self.vehicle.addWheel(Vector3(-29.8, -31.5, 0), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
+        #self.vehicle.addWheel(Vector3(29.8, -31.5, 0), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
+        self.vehicle.addWheel(Vector3(-29.8, -31.5, -43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
+        self.vehicle.addWheel(Vector3(29.8, -31.5, -43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
         self.is_accelerating = False 
+        self.is_braking = True 
         self.last_msg = None
         self.cmd = None
 
@@ -490,13 +537,20 @@ class Robotab(Arena):
             except StopIteration:
                 self.spawn_iterator = iter(self.spawn_points)
                 robot_coordinates = next(self.spawn_iterator)
-
-            uwsgi.websocket_send('posters:{}'.format(';'.join(self.posters)))
+           
+            for ground in self.ground_coordinates:
+                uwsgi.websocket_send(
+                    'ground:{},{},{},{},{},{},{}'.format(*ground))
 
             for wall in self.walls_coordinates:
                 uwsgi.websocket_send(
                     'wall:{},{},{},{},{},{},{}'.format(*wall))
 
+            uwsgi.websocket_send('posters:{}'.format(';'.join(self.posters)))
+
+            for ramp in self.ramps_coordinates:
+                uwsgi.websocket_send(
+                    'ramp:{},{},{},{},{},{},{}'.format(*ramp))
             player = Player(self, username, avatar,
                             uwsgi.connection_fd(), *robot_coordinates)
 

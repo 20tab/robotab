@@ -16,6 +16,7 @@ var raycaster;
 var me, avatar;
 var players = {};
 var walls = [];
+var ramps = [];
 var invisible_walls = [];
 var posters = [];
 var bonus_malus = {};
@@ -139,9 +140,20 @@ function ws_recv(e) {
         return;
     }
 
+    if (items[0] == 'ground'){
+        var args = items[1].split(',');
+        add_ground(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
+        return; 
+    }
     if (items[0] == 'wall'){
         var args = items[1].split(',');
         add_wall(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
+        return;
+    }
+    
+    if (items[0] == 'ramp'){
+        var args = items[1].split(',');
+        add_ramp(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
         return;
     }
 
@@ -211,53 +223,65 @@ function init(){
     //var ambient = new THREE.AmbientLight(0x333333);
     //scene.add(ambient);
 
-    var floorTexture = new THREE.ImageUtils.loadTexture( 'static/img/panel35.jpg' );
-    floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-    floorTexture.repeat.set( 10, 10 );
-    var floorMaterial = new THREE.MeshPhongMaterial( { map: floorTexture , side: THREE.DoubleSide } );
-    var floorGeometry = new THREE.PlaneGeometry(4000, 4000);
-    var floor = new THREE.Mesh(floorGeometry, floorMaterial);
-    floor.position.y = -0.5;
-    floor.rotation.x = Math.PI / 2;
-    //floor.receiveShadow = true;
-    scene.add(floor);
-
-
-    var spotlight = new THREE.SpotLight(0xffffff);
-    spotlight.position.set(-2000, 450, -2000);
-    //spotlight.shadowCameraVisible = true;
-    //spotlight.shadowDarkness = 0.95;
-    spotlight.intensity = 2;
-    // must enable shadow casting ability for the light
-    //spotlight.castShadow = true;
+    var spotlight = new THREE.PointLight(0xffffff, 1, 0);
+    spotlight.position.set(-2000, 2000, 2000);
     scene.add(spotlight);
+    var spotlight = new THREE.PointLight(0xffffff, 1, 0);
+    spotlight.position.set(2000, 2000, 2000);
+    scene.add(spotlight);
+    var spotlight = new THREE.PointLight(0xffffff, 1, 0);
+    spotlight.position.set(2000, 2000, -7000);
+    scene.add(spotlight);
+    var spotlight = new THREE.PointLight(0xffffff, 1, 0);
+    spotlight.position.set(-2000, 2000, -7000);
+    scene.add(spotlight);
+    //var floorTexture = new THREE.ImageUtils.loadTexture( 'static/img/panel35.jpg' );
+    //floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+    //floorTexture.repeat.set( 10, 10 );
+    //var floorMaterial = new THREE.MeshPhongMaterial( { map: floorTexture , side: THREE.DoubleSide } );
+    //var floorGeometry = new THREE.PlaneGeometry(4000, 4000);
+    //var floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    //floor.position.y = -0.5;
+    //floor.rotation.x = Math.PI / 2;
+    ////floor.receiveShadow = true;
+    //scene.add(floor);
 
-    var spotlight = new THREE.SpotLight(0xffffff);
-        spotlight.position.set(2000, 450, 2000);
-        //spotlight.shadowCameraVisible = true;
-        //spotlight.shadowDarkness = 0.95;
-        spotlight.intensity = 2;
-        // must enable shadow casting ability for the light
-        //spotlight.castShadow = true;
-        scene.add(spotlight);
 
-    var spotlight = new THREE.SpotLight(0xffffff);
-        spotlight.position.set(2000, 450, -2000);
-        //spotlight.shadowCameraVisible = true;
-        //spotlight.shadowDarkness = 0.95;
-        spotlight.intensity = 2;
-        // must enable shadow casting ability for the light
-        //spotlight.castShadow = true;
-        scene.add(spotlight);
+    //var spotlight = new THREE.SpotLight(0xffffff);
+    //spotlight.position.set(-2000, 450, -2000);
+    ////spotlight.shadowCameraVisible = true;
+    ////spotlight.shadowDarkness = 0.95;
+    //spotlight.intensity = 2;
+    //// must enable shadow casting ability for the light
+    ////spotlight.castShadow = true;
+    //scene.add(spotlight);
 
-    var spotlight = new THREE.SpotLight(0xffffff);
-        spotlight.position.set(-2000, 450, 2000);
-        //spotlight.shadowCameraVisible = true;
-        //spotlight.shadowDarkness = 0.95;
-        spotlight.intensity = 2;
-        // must enable shadow casting ability for the light
-        //spotlight.castShadow = true;
-        scene.add(spotlight);
+    //var spotlight = new THREE.SpotLight(0xffffff);
+    //    spotlight.position.set(2000, 450, 2000);
+    //    //spotlight.shadowCameraVisible = true;
+    //    //spotlight.shadowDarkness = 0.95;
+    //    spotlight.intensity = 2;
+    //    // must enable shadow casting ability for the light
+    //    //spotlight.castShadow = true;
+    //    scene.add(spotlight);
+
+    //var spotlight = new THREE.SpotLight(0xffffff);
+    //    spotlight.position.set(2000, 450, -2000);
+    //    //spotlight.shadowCameraVisible = true;
+    //    //spotlight.shadowDarkness = 0.95;
+    //    spotlight.intensity = 2;
+    //    // must enable shadow casting ability for the light
+    //    //spotlight.castShadow = true;
+    //    scene.add(spotlight);
+
+    //var spotlight = new THREE.SpotLight(0xffffff);
+    //    spotlight.position.set(-2000, 450, 2000);
+    //    //spotlight.shadowCameraVisible = true;
+    //    //spotlight.shadowDarkness = 0.95;
+    //    spotlight.intensity = 2;
+    //    // must enable shadow casting ability for the light
+    //    //spotlight.castShadow = true;
+    //    scene.add(spotlight);
 
 
     var Ltexture = THREE.ImageUtils.loadTexture('static/img/nebula.jpg');
@@ -657,7 +681,7 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
     if (name == me){
         can_use_keyboard = true;
         players[name].add(backCamera);
-        backCamera.position.set(0, 10, -80);
+        backCamera.position.set(0, 20, -80);
         backCamera.lookAt(players[name].position);
         players[name].updateMatrixWorld();
         var position_vector = new THREE.Vector3();
@@ -715,6 +739,59 @@ function add_bonus_malus(id, bm_type, x, y, z){
 function remove_bonus_malus(id){
     scene.remove(bonus_malus[id]);
     delete bonus_malus[id];
+}
+
+function add_ground(size_x, size_y, size_z, x, y, z, r) {
+    var geometry = new THREE.BoxGeometry(size_x*2, size_y*2, size_z*2);
+    var groundTexture = undefined;
+    if (parseInt(size_z) >= 7000){
+        groundTexture = new THREE.ImageUtils.loadTexture( 'static/img/danger.jpg' );
+        groundTexture.repeat.set( 25, 25 );
+    }
+    else{
+        groundTexture = new THREE.ImageUtils.loadTexture( 'static/img/panel35.jpg' );
+        groundTexture.repeat.set( 10, 10 );
+    }
+    size_z = parseInt(size_z)
+    groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
+    var groundMaterial = new THREE.MeshPhongMaterial( { map: groundTexture , side: THREE.DoubleSide } );
+    var ground = new THREE.Mesh( geometry, groundMaterial );
+    ground.position.set(x, y, z);
+    ground.rotation.y = r;
+    scene.add(ground);
+
+    //var spotlight = new THREE.PointLight(0xffffff, 2, 0);
+    //spotlight.position.set(x, y+2000, z);
+    //scene.add(spotlight);
+
+    //var spotlight = new THREE.SpotLight(0xaaaaaa);
+    //spotlight.position.set(x+size_x, y+450, z+size_z);
+    //spotlight.intensity = 1;
+    //scene.add(spotlight);
+
+    //var spotlight = new THREE.SpotLight(0xaaaaaa);
+    //spotlight.position.set(x+size_x, y+450, z-size_z);
+    //spotlight.intensity = 1;
+    //scene.add(spotlight);
+
+    //var spotlight = new THREE.SpotLight(0xaaaaaa);
+    //spotlight.position.set(x-size_x, y+450, z+size_z);
+    //spotlight.intensity = 1;
+    //scene.add(spotlight);
+    
+}
+
+
+function add_ramp(size_x, size_y, size_z, x, y, z, r) {
+    var geometry = new THREE.BoxGeometry(size_x*2, size_y*2, size_z*2);
+    var rampTexture = new THREE.ImageUtils.loadTexture( 'static/img/panel35.jpg' );
+    rampTexture.wrapS = rampTexture.wrapT = THREE.RepeatWrapping;
+    rampTexture.repeat.set( 10, 10 );
+    var rampMaterial = new THREE.MeshPhongMaterial( { map: rampTexture , side: THREE.DoubleSide } );
+    var ramp = new THREE.Mesh( geometry, rampMaterial );
+    ramp.position.set(x, y , z);
+    ramp.rotation.x = r;
+    scene.add(ramp); 
 }
 
 function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
@@ -829,13 +906,13 @@ function loadObjects3d(objects3d, index, manager){
 }
 
 function start_websocket(){
-    ws = new WebSocket('ws://robotab.20tab.com/robotab');
+    ws = new WebSocket('ws://' + window.location.host + '/robotab');
     ws.onopen = start_the_world;
     ws.onmessage = ws_recv;
-    ws.oncolose = function() {
+    ws.onclose = function() {
         alert('connection closed');
     }
-    ws.onerror = function() {
+    ws.onerror = function(e) {
         alert('ERROR');
     }
 }
