@@ -409,15 +409,14 @@ function render() {
     }
     else {
         renderer.render(scene, backCamera);
+/*
         Object.keys(players).forEach(function(key){
-        	var player = players[key];
-		if (player.ws['velocity'] == 0.0) {
-			player.sound.pause();
-		}
-		else {	
-			//player.sound.update(backCamera);
+                if (key != me) {
+        		var player = players[key];
+			player.sound.update(players[me]);
 		}
 	});
+*/
     }
 }
 
@@ -561,7 +560,11 @@ function update(td) {
                 player.ws['x'],
                 player.ws['y'],
                 player.ws['z']);
-            player.sound.source.playbackRate.value = Math.abs(player.ws['velocity']) / 300;
+	    player.sound.source.playbackRate.value=Math.abs(player.ws['velocity']) / 300;
+            player.sound.position.set(
+                player.ws['x'],
+                player.ws['y'],
+                player.ws['z']);
         }
 
         if ((player.dirty && player.name == me && !use_eagle_camera) || camera_changed){
@@ -647,7 +650,8 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
     players[name].bonus = '';
     players[name].last_bullet = 0;
     players[name].sound = new THREE.AudioObject( [ 'static/sounds/move-loop.mp3' ]);
-    players[name].add(players[name].sound);
+    scene.add(players[name].sound);
+    //players[name].sound.play();
     // Create a single Emitter
 
     var playerEngineGroup = new SPE.Group({
