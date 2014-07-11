@@ -456,7 +456,7 @@ class Arena(object):
 
 class Player(object):
 
-    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=45):
+    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=80):
         self.sc_x = 5
         self.sc_y = 5
         self.sc_z = 5
@@ -512,14 +512,17 @@ class Player(object):
         # trigger the kill procedure removing the player from the list
         # if after the death a single player remains,
         # trigger the winning procedure
-    def damage(self, amount, attacker):
+    def damage(self, amount, attacker=None):
         if not self.game.started:
             return
         self.energy -= amount
         if self.energy <= 0:
-            self.game.broadcast(
-                '{} was killed by {}'.format(self.name, attacker))
-            self.end('loser')
+            if attacker:
+                self.game.broadcast(
+                    '{} was killed by {}'.format(self.name, attacker))
+                self.end('loser')
+            else:
+                self.end('overturn')
         else:
             self.update_gfx()
 
@@ -540,6 +543,7 @@ class Player(object):
         rot_y = round(quaternion.getY(), 2)
         rot_z = round(quaternion.getZ(), 2)
         rot_w = round(quaternion.getW(), 2)
+        speed = self.chassis.getLinearVelocity().length()
         msg = ('{name}:{pos_x},{pos_y},{pos_z},'
                '{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},{rot_w:.2f},'
                '{energy:.1f},{avatar},{sc_x},{sc_y},{sc_z},{color},{velocity:.2f}').format(
@@ -557,8 +561,11 @@ class Player(object):
             sc_y=self.sc_y,
             sc_z=self.sc_z,
             color=self.color,
-            velocity=self.chassis.getLinearVelocity().length()
+            velocity=speed
         )
+        # no good
+        #if speed == 0.00:
+        #    self.damage(1.0)
         if msg != self.last_msg:
             #print msg
             self.send_all(msg)
