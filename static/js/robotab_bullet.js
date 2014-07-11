@@ -162,11 +162,19 @@ function ws_recv(e) {
     }
     if (items[0] == 'sphere'){
         var args = items[1].split(',');
+        console.log(items[1]);
         if (moving_sphere == undefined){
             add_sphere(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
         }
         else{
-            //TODO update sphere
+            moving_sphere.ws['x'] = args[1];
+            moving_sphere.ws['y'] = args[2];
+            moving_sphere.ws['z'] = args[3];
+            moving_sphere.ws['rot_x'] = parseFloat(args[4]);
+            moving_sphere.ws['rot_y'] = parseFloat(args[5]);
+            moving_sphere.ws['rot_z'] = parseFloat(args[6]);
+            moving_sphere.ws['rot_w'] = parseFloat(args[7]);
+            moving_sphere.dirty = true;
         }
         return;
     }
@@ -478,6 +486,18 @@ function update(td) {
             }
         }
     }
+    if (moving_sphere != undefined && moving_sphere.dirty){
+        moving_sphere.position.set(
+            parseFloat(moving_sphere.ws['x']),
+            parseFloat(moving_sphere.ws['y']),
+            parseFloat(moving_sphere.ws['z']));
+        moving_sphere.quaternion.set(
+            moving_sphere.ws['rot_x'],
+            moving_sphere.ws['rot_y'],
+            moving_sphere.ws['rot_z'],
+            moving_sphere.ws['rot_w']);
+        moving_sphere.dirty = false;
+    }
 
     Object.keys(bonus_malus).forEach(function(key){
         var bm = bonus_malus[key];
@@ -525,9 +545,10 @@ function update(td) {
                 player.ws['rot_y'],
                 player.ws['rot_z'],
                 player.ws['rot_w']);
-            player.position.x = player.ws['x'];
-            player.position.y = player.ws['y'];
-            player.position.z = player.ws['z'];
+            player.position.set(
+                player.ws['x'],
+                player.ws['y'],
+                player.ws['z']);
         }
 
         if ((player.dirty && player.name == me && !use_eagle_camera) || camera_changed){
@@ -756,19 +777,24 @@ function remove_bonus_malus(id){
 }
 
 function add_sphere(radius, x, y, z, rot_x, rot_y, rot_z, rot_w){
-    var geometry = new THREE.SphereGeometry(parseInt(radius), 16, 16);
+    var geometry = new THREE.SphereGeometry(40, 16, 16);//parseInt(radius), 16, 16);
     var sphereTexture = new THREE.ImageUtils.loadTexture('static/img/skel.jpg');
-    sphereTexture.repeat.set(10, 10);
+    sphereTexture.repeat.set(1, 1);
     sphereTexture.wrapS = sphereTexture.wrapT = THREE.RepeatWrapping;
     var sphereMaterial = new THREE.MeshPhongMaterial({map: sphereTexture});
     moving_sphere = new THREE.Mesh(geometry, sphereMaterial);
     moving_sphere.position.set(x, y, z);
-    moving_sphere.rotation.setFromQuaternion(
-                new THREE.Quaternion(
-                    rot_x,
-                    rot_y,
-                    rot_z,
-                    rot_w));
+    //moving_sphere.useQuaternion = true;
+    moving_sphere.quaternion.set(rot_x, rot_y, rot_z, rot_w);
+    moving_sphere.ws = {
+        'x': 0.0,
+        'y': 0.0,
+        'z': 0.0,
+        'rot_x': 0.0,
+        'rot_y': 0.0,
+        'rot_z': 0.0,
+        'rot_w': 0.0,
+    };
     scene.add(moving_sphere);
     console.log(moving_sphere);
 }
@@ -791,27 +817,6 @@ function add_ground(size_x, size_y, size_z, x, y, z, r) {
     ground.position.set(x, y, z);
     ground.rotation.y = r;
     scene.add(ground);
-    grounds.push(ground);
-
-    //var spotlight = new THREE.PointLight(0xffffff, 2, 0);
-    //spotlight.position.set(x, y+2000, z);
-    //scene.add(spotlight);
-
-    //var spotlight = new THREE.SpotLight(0xaaaaaa);
-    //spotlight.position.set(x+size_x, y+450, z+size_z);
-    //spotlight.intensity = 1;
-    //scene.add(spotlight);
-
-    //var spotlight = new THREE.SpotLight(0xaaaaaa);
-    //spotlight.position.set(x+size_x, y+450, z-size_z);
-    //spotlight.intensity = 1;
-    //scene.add(spotlight);
-
-    //var spotlight = new THREE.SpotLight(0xaaaaaa);
-    //spotlight.position.set(x-size_x, y+450, z+size_z);
-    //spotlight.intensity = 1;
-    //scene.add(spotlight);
-    
 }
 
 

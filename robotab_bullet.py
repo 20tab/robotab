@@ -49,7 +49,7 @@ class Sphere(object):
         rot_y = round(quaternion.getY(), 2)
         rot_z = round(quaternion.getZ(), 2)
         rot_w = round(quaternion.getW(), 2)
-        msg = ('sphere:{radius}:{pos_x},{pos_y},{pos_z},'
+        msg = ('sphere:{radius},{pos_x},{pos_y},{pos_z},'
                '{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},{rot_w:.2f},').format(
             radius=self.radius,
             pos_x=int(pos_x),
@@ -141,38 +141,38 @@ class Arena(object):
         self.warmup = warmup
         self.started = False
         self.finished = gevent.event.Event()
-        #self.warming_up = False
         self.walls = []
         self.ramps = []
         self.grounds = []
         self.ground_coordinates = (
-            (2000, 250, 2000, 0, -250, 0, 0),
-            (2000, 430.75, 4000, 0, -69.25, -7350, 0),
-            (6000, 1, 8000, 0, -500, -1500, 0)
+            #sc_x,   sc_y,   sc_z,     x,      y,      z,           r
+            (2000,    250,   2000,     0,   -250,      0,           0),
+            (2000, 430.75,   4000,     0,    -69,  -7350,           0),
+            (6000,      1,   8000,     0,   -500,  -1500,           0)
         )
         self.walls_coordinates = (
-            #sc_x,  sc_y,   sc_z,     x,       y,     z,            r
-           (150,     50,     50,     0,     215, -1950,            0),
-           (200,     50,     50, -1950,     215,     0, -math.pi / 2),
-           (200,     50,     50,  1950,     215,     0, -math.pi / 2),
-           (200,     50,     50,     0,     215,  1950,            0),
+             (150,     50,     50,     0,    215,  -1950,           0),
+             (200,     50,     50, -1950,    215,      0,  -math.pi/2),
+             (200,     50,     50,  1950,    215,      0,  -math.pi/2),
+             (200,     50,     50,     0,    215,   1950,           0),
 
-           ( 50,      30,     30,  -730,     125, -1200,            0),
-           ( 50,      30,     30,   730,     125, -1200,            0),
+             ( 50,     30,     30,  -730,    125,  -1200,           0),
+             ( 50,     30,     30,   730,    125,  -1200,           0),
 
-           ( 50,      30,     30, -1200,     125,  -730, -math.pi / 2),
-           ( 50,      30,     30, -1200,     125,   730, -math.pi / 2),
+             ( 50,     30,     30, -1200,    125,   -730,  -math.pi/2),
+             ( 50,     30,     30, -1200,    125,    730,  -math.pi/2),
 
-           ( 50,      30,     30,  1200,     125,  -730, -math.pi / 2),
-           ( 50,      30,     30,  1200,     125,   730, -math.pi / 2),
+             ( 50,     30,     30,  1200,    125,   -730,  -math.pi/2),
+             ( 50,     30,     30,  1200,    125,    730,  -math.pi/2),
 
-           ( 50,      30,     30,  -730,     125,  1200,            0),
-           ( 50,      30,     30,   730,     125,  1200,            0),
+             ( 50,     30,     30,  -730,    125,   1200,           0),
+             ( 50,     30,     30,   730,    125,   1200,           0),
         )
         
         self.ramps_coordinates = (
-             (350, 10, 700, -1635, 172, -2679, math.pi/12),
-             (350, 10, 700, 1635, 172, -2679, math.pi/12),
+             (350,     10,    700, -1635,     172, -2679,  math.pi/12),
+             (350,     10,    700,  1635,     172, -2679,  math.pi/12),
+             (350,     10,    500,     0,     350, -5000,  math.pi/10)
         )
 
         self.spawn_points = (
@@ -246,7 +246,10 @@ class Arena(object):
     def msg_handler(self, player, msg):
         p, cmd = msg.split(':')
         if cmd != 'AT':
-            self.players[p].cmd = cmd
+            try:
+                self.players[p].cmd = cmd
+            except KeyError:
+                pass
 
     def cmd_handler(self, player, cmd):
         if cmd == 'rl':
@@ -344,7 +347,7 @@ class Arena(object):
             for p in self.players.keys():
                 try:
                    player = self.players[p]
-                except:
+                except KeyError:
                    continue
                 position = player.trans.getOrigin()
                 if position.getY() < -420:
@@ -609,21 +612,22 @@ class Robotab(Arena):
             player = Player(self, username, avatar,
                             uwsgi.connection_fd(), *robot_coordinates)
 
-            if(self.started or self.finished.is_set() or
-               len(self.players) > self.max_players or
-               len(self.waiting_players) > 0):
-                #print('{}:{}:{}:{}'.format(
-                #    self.started, self.finished,
-                #    len(self.players) > self.max_players,
-                #    len(self.waiting_players) > 0))
+            #if(self.started or self.finished.is_set() or
+            #   len(self.players) > self.max_players or
+            #   len(self.waiting_players) > 0):
+            #    #print('{}:{}:{}:{}'.format(
+            #    #    self.started, self.finished,
+            #    #    len(self.players) > self.max_players,
+            #    #    len(self.waiting_players) > 0))
 
-                self.waiting_players.append(player)
-                uwsgi.websocket_send(
-                    "arena:hey {}, wait for next game".format(player.name))
-                player.wait_for_game()
-                self.waiting_players.remove(player)
-            else:
-                self.players[player.name] = player
+            #    self.waiting_players.append(player)
+            #    uwsgi.websocket_send(
+            #        "arena:hey {}, wait for next game".format(player.name))
+            #    player.wait_for_game()
+            #    self.waiting_players.remove(player)
+            #else:
+            #    self.players[player.name] = player
+            self.players[player.name] = player
 
             self.spawn_greenlets()
 
