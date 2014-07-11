@@ -16,11 +16,10 @@ var raycaster;
 var me, avatar;
 var players = {};
 var walls = [];
-var ramps = [];
 var invisible_walls = [];
 var posters = [];
 var bonus_malus = {};
-var moving_sphere == undefined;
+var moving_sphere;
 var healtbar;
 var health;
 var particles, particleSystem;
@@ -60,7 +59,7 @@ for (i in avatars) {
 }
 
 function ws_recv(e) {
-    console.log(e.data);
+    //console.log(e.data);
     var items = e.data.split(':');
     if (items[0] == 'arena') {
         var args = items[1].split(',');
@@ -169,6 +168,7 @@ function ws_recv(e) {
         else{
             //TODO update sphere
         }
+        return;
     }
 
     var player = players[items[0]];
@@ -514,12 +514,17 @@ function update(td) {
 
         if (player.dirty) {
             draw_hud_div(player);
-            player.rotation.setFromQuaternion(
-                new THREE.Quaternion(
-                    player.ws['rot_x'],
-                    player.ws['rot_y'],
-                    player.ws['rot_z'],
-                    player.ws['rot_w']));
+            //player.rotation.setFromQuaternion(
+            //    new THREE.Quaternion(
+            //        player.ws['rot_x'],
+            //        player.ws['rot_y'],
+            //        player.ws['rot_z'],
+            //        player.ws['rot_w']));
+            player.quaternion.set(
+                player.ws['rot_x'],
+                player.ws['rot_y'],
+                player.ws['rot_z'],
+                player.ws['rot_w']);
             player.position.x = player.ws['x'];
             player.position.y = player.ws['y'];
             player.position.z = player.ws['z'];
@@ -751,7 +756,7 @@ function remove_bonus_malus(id){
 }
 
 function add_sphere(radius, x, y, z, rot_x, rot_y, rot_z, rot_w){
-    var geometry = new THREE.Sphere(radius, 16, 16);
+    var geometry = new THREE.SphereGeometry(parseInt(radius), 16, 16);
     var sphereTexture = new THREE.ImageUtils.loadTexture('static/img/skel.jpg');
     sphereTexture.repeat.set(10, 10);
     sphereTexture.wrapS = sphereTexture.wrapT = THREE.RepeatWrapping;
@@ -765,6 +770,7 @@ function add_sphere(radius, x, y, z, rot_x, rot_y, rot_z, rot_w){
                     rot_z,
                     rot_w));
     scene.add(moving_sphere);
+    console.log(moving_sphere);
 }
 
 function add_ground(size_x, size_y, size_z, x, y, z, r) {
@@ -785,6 +791,7 @@ function add_ground(size_x, size_y, size_z, x, y, z, r) {
     ground.position.set(x, y, z);
     ground.rotation.y = r;
     scene.add(ground);
+    grounds.push(ground);
 
     //var spotlight = new THREE.PointLight(0xffffff, 2, 0);
     //spotlight.position.set(x, y+2000, z);
@@ -892,6 +899,7 @@ function go_fullscreen() {
 
 function loadObjects3d(objects3d, index, manager){
     if (index >= objects3d.length){
+        objects[0].useQuaternion = true;
         objects[3].ref.children[0].material.transparent = true;
         // objects[3].ref.frustumCulled = false;
         start_websocket();
