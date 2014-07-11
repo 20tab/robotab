@@ -14,26 +14,27 @@ class Sphere(object):
 
     def __init__(self, world):
         self.radius = 50
-        self.sphere_mass = 400.0
-        self.sphere_shape = SphereShape(self.radius)
+        self.mass = 400.0
+        self.shape = SphereShape(self.radius)
         q = Quaternion(0, 0, 0, 1)
         q.setRotation(Vector3(0.0, 1.0, 0.0), 0.0)
-        self.sphere_motion_state = DefaultMotionState(
-            Transform(q, Vector3(0, 0, 0)))
-        self.sphere_inertia = Vector3(0, 0, 0)
-        self.sphere_shape.calculateLocalInertia(self.sphere_mass, self.sphere_inertia)
-        sphere_construction_info = RigidBodyConstructionInfo(
-            self.sphere_mass, self.sphere_motion_state, self.sphere_shape, self.sphere_inertia)
-        self.sphere_body = RigidBody(sphere_construction_info)
-        world.addRigidBody(self.sphere_body)
-        self.sphere_trans = Transform()
-        self.sphere_origin = self.sphere_trans.getOrigin()
+        self.motion_state = DefaultMotionState(
+            Transform(q, Vector3(0, 100, 0)))
+        self.inertia = Vector3(0, 0, 0)
+        self.shape.calculateLocalInertia(self.mass, self.inertia)
+        construction_info = RigidBodyConstructionInfo(
+            self.mass, self.motion_state, self.shape, self.inertia)
+        self.body = RigidBody(construction_info)
+        world.addRigidBody(self.body)
+        self.trans = Transform()
+        self.origin = self.trans.getOrigin()
         self.last_msg = None
         self.arena = "arena{}".format(uwsgi.worker_id())
         self.redis = redis.StrictRedis()
         self.channel = self.redis.pubsub()
         self.channel.subscribe(self.arena)
         self.redis_fd = self.channel.connection._sock.fileno()
+        self.update_gfx()
 
     def send_all(self, msg):
         self.redis.publish(self.arena, msg)
@@ -145,9 +146,9 @@ class Arena(object):
         self.ramps = []
         self.grounds = []
         self.ground_coordinates = (
-            (2000, 1, 2000, 0, 0, 0, 0),
-            (2000, 1, 4000, 0, 361.5, -7350, 0),
-            (5000, 1, 8000, 0, -500, -1500, 0)
+            (2000, 250, 2000, 0, -250, 0, 0),
+            (2000, 430.75, 4000, 0, -69.25, -7350, 0),
+            (6000, 1, 8000, 0, -500, -1500, 0)
         )
         self.walls_coordinates = (
             #sc_x,  sc_y,   sc_z,     x,       y,     z,            r
@@ -345,8 +346,6 @@ class Arena(object):
                    player = self.players[p]
                 except:
                    continue
-                #print('ciao')
-                #player.body.activate(True)
                 position = player.trans.getOrigin()
                 if position.getY() < -420:
                     player.end('fallen')
@@ -452,7 +451,7 @@ class Arena(object):
 
 class Player(object):
 
-    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=40):
+    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=45):
         self.sc_x = 5
         self.sc_y = 5
         self.sc_z = 5
