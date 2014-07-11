@@ -14,7 +14,7 @@ class Sphere(object):
 
     def __init__(self, world):
         self.radius = 50
-        self.mass = 2000.0
+        self.mass = 1000.0
         self.shape = SphereShape(self.radius)
         q = Quaternion(0, 0, 0, 1)
         q.setRotation(Vector3(0.0, 1.0, 0.0), 0.0)
@@ -361,10 +361,11 @@ class Arena(object):
                     player.vehicle.applyEngineForce(0, 3)
                     player.is_braking = True
                 else:
+                    #speed = player.vehicle.getCurrentSpeedKmHour()
                     velocity = player.chassis.getLinearVelocity()
                     speed = velocity.length()
-                    if speed > player.max_speed:
-                        new_speed = player.max_speed / speed
+                    if speed > (player.max_speed/2):
+                        new_speed = (player.max_speed/2) / speed
                         velocity = Vector3(
                             new_speed * velocity.getX(),
                             new_speed * velocity.getY(),
@@ -456,7 +457,7 @@ class Arena(object):
 
 class Player(object):
 
-    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=80):
+    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=170):
         self.sc_x = 5
         self.sc_y = 5
         self.sc_z = 5
@@ -543,7 +544,7 @@ class Player(object):
         rot_y = round(quaternion.getY(), 2)
         rot_z = round(quaternion.getZ(), 2)
         rot_w = round(quaternion.getW(), 2)
-        speed = self.chassis.getLinearVelocity().length()
+        speed = self.vehicle.getCurrentSpeedKmHour()
         msg = ('{name}:{pos_x},{pos_y},{pos_z},'
                '{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},{rot_w:.2f},'
                '{energy:.1f},{avatar},{sc_x},{sc_y},{sc_z},{color},{velocity:.2f}').format(

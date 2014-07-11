@@ -411,7 +411,12 @@ function render() {
         renderer.render(scene, backCamera);
         Object.keys(players).forEach(function(key){
         	var player = players[key];
-		player.sound.update(backCamera);
+		if (player.ws['velocity'] == 0.0) {
+			player.sound.pause();
+		}
+		else {	
+			//player.sound.update(backCamera);
+		}
 	});
     }
 }
@@ -556,7 +561,7 @@ function update(td) {
                 player.ws['x'],
                 player.ws['y'],
                 player.ws['z']);
-            player.sound.source.playbackRate.value = player.ws['velocity'] / 45;
+            player.sound.source.playbackRate.value = Math.abs(player.ws['velocity']) / 300;
         }
 
         if ((player.dirty && player.name == me && !use_eagle_camera) || camera_changed){
