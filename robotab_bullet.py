@@ -253,10 +253,10 @@ class Arena(object):
 
     def cmd_handler(self, player, cmd):
         if cmd == 'rl':
-            player.vehicle.applyEngineForce(10000.0, 0)
-            player.vehicle.applyEngineForce(-10000.0, 1)
-            player.vehicle.applyEngineForce(10000.0, 2)
-            player.vehicle.applyEngineForce(-10000.0, 3)    
+            player.vehicle.applyEngineForce(5000.0, 0)
+            player.vehicle.applyEngineForce(-5000.0, 1)
+            player.vehicle.applyEngineForce(5000.0, 2)
+            player.vehicle.applyEngineForce(-5000.0, 3)    
             player.is_accelerating = True
             player.is_braking = False
         
@@ -275,10 +275,10 @@ class Arena(object):
             return True
 
         if cmd == 'rr':
-            player.vehicle.applyEngineForce(-10000.0, 0)
-            player.vehicle.applyEngineForce(10000.0, 1)
-            player.vehicle.applyEngineForce(-10000.0, 2)
-            player.vehicle.applyEngineForce(10000.0, 3)
+            player.vehicle.applyEngineForce(-5000.0, 0)
+            player.vehicle.applyEngineForce(5000.0, 1)
+            player.vehicle.applyEngineForce(-5000.0, 2)
+            player.vehicle.applyEngineForce(5000.0, 3)
             player.is_accelerating = True
             player.is_braking = False
             #q = Quaternion(0, -0.05, 0, 1) * player.trans.getRotation()
@@ -333,6 +333,7 @@ class Arena(object):
         print('engine started')
         while True:
             t = uwsgi.micros() / 1000.0
+            """
             if len(self.players) == 1 and self.started:
                 self.finished.set()
                 self.winning_logic()
@@ -342,6 +343,7 @@ class Arena(object):
                 self.finished.set()
                 self.restart_game()
                 break
+            """
             self.world.stepSimulation(1, 30)
             self.sphere.update_gfx()
             for p in self.players.keys():
@@ -540,7 +542,7 @@ class Player(object):
         rot_w = round(quaternion.getW(), 2)
         msg = ('{name}:{pos_x},{pos_y},{pos_z},'
                '{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},{rot_w:.2f},'
-               '{energy:.1f},{avatar},{sc_x},{sc_y},{sc_z},{color}').format(
+               '{energy:.1f},{avatar},{sc_x},{sc_y},{sc_z},{color},{velocity:.2f}').format(
             name=self.name,
             pos_x=int(pos_x),
             pos_y=int(pos_y),
@@ -554,7 +556,8 @@ class Player(object):
             sc_x=self.sc_x,
             sc_y=self.sc_y,
             sc_z=self.sc_z,
-            color=self.color
+            color=self.color,
+            velocity=self.chassis.getLinearVelocity().length()
         )
         if msg != self.last_msg:
             #print msg

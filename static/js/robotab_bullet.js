@@ -209,6 +209,7 @@ function ws_recv(e) {
     player.ws['rot_y'] = parseFloat(args[4]);
     player.ws['rot_z'] = parseFloat(args[5]);
     player.ws['rot_w'] = parseFloat(args[6]);
+    player.ws['velocity'] = parseFloat(args[13]);
 
     player.energy = parseFloat(args[7]);
     player.name_and_energy = items[0] + ': ' + player.energy;
@@ -474,6 +475,7 @@ function update(td) {
             is_moving = true;
         }
 
+/*
         if (is_moving) {
             if (document.getElementById('move').paused) {
                 document.getElementById('move').play();
@@ -485,6 +487,7 @@ function update(td) {
                 document.getElementById('move').currentTime = 0;
             }
         }
+*/
     }
     if (moving_sphere != undefined && moving_sphere.dirty){
         moving_sphere.position.set(
@@ -549,6 +552,7 @@ function update(td) {
                 player.ws['x'],
                 player.ws['y'],
                 player.ws['z']);
+            player.sound.source.playbackRate.value = player.ws['velocity'] / 45;
         }
 
         if ((player.dirty && player.name == me && !use_eagle_camera) || camera_changed){
@@ -633,6 +637,8 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
     players[name].name_and_energy = name + ': ' + energy;
     players[name].bonus = '';
     players[name].last_bullet = 0;
+    players[name].sound = new THREE.AudioObject( [ 'static/sounds/move-loop.mp3' ]);
+    players[name].add(players[name].sound);
     // Create a single Emitter
 
     var playerEngineGroup = new SPE.Group({
