@@ -718,7 +718,7 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
     players[name].position.x = x;
     players[name].position.y = y;
     players[name].position.z = z;
-    players[name].rotation.setFromQuaternion(new THREE.Quaternion(rot_x, rot_y, rot_z, rot_w));
+    players[name].quaternion.set(rot_x, rot_y, rot_z, rot_w);
     scene.add(players[name]);
 }
 
