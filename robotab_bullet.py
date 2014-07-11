@@ -14,7 +14,7 @@ class Sphere(object):
 
     def __init__(self, world):
         self.radius = 50
-        self.mass = 400.0
+        self.mass = 2000.0
         self.shape = SphereShape(self.radius)
         q = Quaternion(0, 0, 0, 1)
         q.setRotation(Vector3(0.0, 1.0, 0.0), 0.0)
