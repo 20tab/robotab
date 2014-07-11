@@ -294,10 +294,10 @@ class Arena(object):
             return True
 
         if cmd == 'fw':
-            player.vehicle.applyEngineForce(2000.0, 0)
-            player.vehicle.applyEngineForce(2000.0, 1)
-            player.vehicle.applyEngineForce(2000.0, 2)
-            player.vehicle.applyEngineForce(2000.0, 3)
+            player.vehicle.applyEngineForce(500.0, 0)
+            player.vehicle.applyEngineForce(500.0, 1)
+            player.vehicle.applyEngineForce(500.0, 2)
+            player.vehicle.applyEngineForce(500.0, 3)
             player.is_accelerating = True
             player.is_braking = False
             #player.vehicle.setBrake(0, 0)
@@ -313,10 +313,10 @@ class Arena(object):
             return True
 
         if cmd == 'bw':
-            player.vehicle.applyEngineForce(-2000.0, 0)
-            player.vehicle.applyEngineForce(-2000.0, 1)
-            player.vehicle.applyEngineForce(-2000.0, 2)
-            player.vehicle.applyEngineForce(-2000.0, 3)
+            player.vehicle.applyEngineForce(-500.0, 0)
+            player.vehicle.applyEngineForce(-500.0, 1)
+            player.vehicle.applyEngineForce(-500.0, 2)
+            player.vehicle.applyEngineForce(-500.0, 3)
             player.is_accelerating = True
             player.is_braking = False
             #orientation = player.body.getOrientation()

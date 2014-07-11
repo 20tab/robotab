@@ -409,6 +409,10 @@ function render() {
     }
     else {
         renderer.render(scene, backCamera);
+        Object.keys(players).forEach(function(key){
+        	var player = players[key];
+		player.sound.update(backCamera);
+	});
     }
 }
 
@@ -897,7 +901,7 @@ function draw_huds() {
 
 function draw_hud_div(player) {
     // console.log('draw_hud_div');
-    player.hud.innerHTML = player.name_and_energy + ' | ' + player.bonus;
+    player.hud.innerHTML = player.name_and_energy + ' | ' + player.bonus + ' | speed: ' + player.ws['velocity'] + 'Km/H';
 }
 
 function go_fullscreen() {
