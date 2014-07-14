@@ -67,10 +67,10 @@ class Sphere(object):
 
 class StaticBox(object):
 
-    def __init__(self, world, size_x, size_y, size_z, x, y, z, r, friction=0.5, sc_x=1, sc_y=1, sc_z=1):
+    def __init__(self, world, size_x, size_y, size_z, x, y, z, r, friction=0.5, sc_x=1, sc_y=1, sc_z=1, rot_vect=Vector3(0.0, 1.0, 0.0)):
         self.shape = BoxShape(Vector3(size_x*sc_x, size_y*sc_y, size_z*sc_z))
         q = Quaternion(0, 0, 0, 1)
-        q.setRotation(Vector3(0.0, 1.0, 0.0), r)
+        q.setRotation(rot_vect, r)
         self.motion_state = DefaultMotionState(
             Transform(q, Vector3(x, y, z)))
         construction_info = RigidBodyConstructionInfo(
@@ -101,20 +101,6 @@ class Box(object):
         self.origin = self.trans.getOrigin()
 
 
-class Ramp(object):
-     
-     def __init__(self, world, size_x, size_y, size_z, x, y, z, r, friction=0.5, sc_x=1, sc_y=1, sc_z=1):
-         self.shape = BoxShape(Vector3(size_x*sc_x, size_y*sc_y, size_z*sc_z))
-         q = Quaternion(0, 0, 0, 1)
-         q.setRotation(Vector3(1.0, 0.0, 0.0), r)
-         self.motion_state = DefaultMotionState(
-             Transform(q, Vector3(x, y, z)))
-         construction_info = RigidBodyConstructionInfo(
-             0, self.motion_state, self.shape, Vector3(0, 0, 0))
-         construction_info.m_friction = friction
-         self.body = RigidBody(construction_info)
-         world.addRigidBody(self.body)
-
 class Arena(object):
 
     def __init__(self, min_players=3, max_players=8, warmup=10):
@@ -143,6 +129,7 @@ class Arena(object):
         self.walls = []
         self.ramps = []
         self.grounds = []
+        self.all_players = []
         self.ground_coordinates = (
             #sc_x,   sc_y,   sc_z,     x,      y,      z,           r
             (2000,    250,   2000,     0,   -250,      0,           0),
@@ -210,7 +197,7 @@ class Arena(object):
             wall = StaticBox(self.world, 9.76, 4.37, 0.71, wall_c[3], wall_c[4], wall_c[5], wall_c[6], 0.5, wall_c[0], wall_c[1], wall_c[2])
             self.walls.append(wall)
         for ramp_c in self.ramps_coordinates:
-            ramp = Ramp(self.world, *ramp_c)
+            ramp = StaticBox(self.world, *ramp_c, rot_vect=Vector3(1.0, 0.0, 0.0))
             self.ramps.append(ramp)
         self.arena = "arena{}".format(uwsgi.worker_id())
         self.redis = redis.StrictRedis()
@@ -497,10 +484,10 @@ class Player(object):
         self.is_braking = True 
         self.last_msg = None
         self.cmd = None
-	self.vehicle.setBrake(2, 0)
-        self.vehicle.setBrake(2, 1)
-        self.vehicle.setBrake(2, 2)
-        self.vehicle.setBrake(2, 3)
+	self.vehicle.setBrake(3, 0)
+        self.vehicle.setBrake(3, 1)
+        self.vehicle.setBrake(3, 2)
+        self.vehicle.setBrake(3, 3)
 
         self.color = color
         self.max_speed = max_speed
@@ -510,6 +497,7 @@ class Player(object):
         self.channel = self.redis.pubsub()
         self.channel.subscribe(self.arena)
         self.redis_fd = self.channel.connection._sock.fileno()
+        self.game.all_players.append(self)
         # self.bullet = Bullet(self.game, self)
 
         # check if self.energy is 0, in such a case
