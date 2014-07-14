@@ -65,7 +65,6 @@ class Sphere(object):
             self.send_all(msg)
             self.last_msg = msg
 
-
 class StaticBox(object):
 
     def __init__(self, world, size_x, size_y, size_z, x, y, z, r, friction=0.5, sc_x=1, sc_y=1, sc_z=1):
@@ -208,7 +207,7 @@ class Arena(object):
         #self.ground = StaticBox(self.world, *self.ground_coordinates)
 
         for wall_c in self.walls_coordinates:
-            wall = StaticBox(self.world, wall_c[0], wall_c[1], 6, wall_c[3], 0, wall_c[5], wall_c[6], 0.0, 10, 1, 6)
+            wall = StaticBox(self.world, 9.76, 4.37, 0.71, wall_c[3], wall_c[4], wall_c[5], wall_c[6], 0.5, wall_c[0], wall_c[1], wall_c[2])
             self.walls.append(wall)
         for ramp_c in self.ramps_coordinates:
             ramp = Ramp(self.world, *ramp_c)
@@ -490,10 +489,10 @@ class Player(object):
         self.chassis.setActivationState(4)
         self.game.world.addAction(self.vehicle)
         self.vehicle.setCoordinateSystem(0, 1, 2)
-        self.vehicle.addWheel(Vector3(-29.8, -31.5, 43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False) 
-        self.vehicle.addWheel(Vector3(29.8, -31.5, 43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
-        self.vehicle.addWheel(Vector3(-29.8, -31.5, -43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
-        self.vehicle.addWheel(Vector3(29.8, -31.5, -43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 2.0, self.tuning, False)
+        self.vehicle.addWheel(Vector3(-29.8, -31.5, 43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 3.0, self.tuning, False) 
+        self.vehicle.addWheel(Vector3(29.8, -31.5, 43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 3.0, self.tuning, False)
+        self.vehicle.addWheel(Vector3(-29.8, -31.5, -43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 3.0, self.tuning, False)
+        self.vehicle.addWheel(Vector3(29.8, -31.5, -43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 3.0, self.tuning, False)
         self.is_accelerating = False 
         self.is_braking = True 
         self.last_msg = None
