@@ -147,7 +147,7 @@ class Arena(object):
         self.ground_coordinates = (
             #sc_x,   sc_y,   sc_z,     x,      y,      z,           r
             (2000,    250,   2000,     0,   -250,      0,           0),
-            (2000, 430.75,   4000,     0,    -69,  -7350,           0),
+            (2000,  431.5,   4000,     0,    -69,  -7350,           0),
             (6000,      1,   8000,     0,   -500,  -1500,           0)
         )
         self.walls_coordinates = (
