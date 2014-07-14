@@ -172,11 +172,11 @@ class Arena(object):
         self.ramps_coordinates = (
              (350,     10,    700, -1635,     172, -2679,  math.pi/12),
              (350,     10,    700,  1635,     172, -2679,  math.pi/12),
-             (350,     10,    500,     0,     350, -5000,  math.pi/10)
+             (350,     10,    500,     0,     370, -7000,  math.pi/10)
         )
 
         self.spawn_points = (
-            #    x,     y,   z,               r,    color
+            #    x,     y,     z,                r,    color
             #(    0,  1650,         math.pi),
             #(    0, -1650,               0),
             ( -935,    35,   935,  3 * math.pi / 4, 0x7777AA),
@@ -253,10 +253,10 @@ class Arena(object):
 
     def cmd_handler(self, player, cmd):
         if cmd == 'rl':
-            player.vehicle.applyEngineForce(5000.0, 0)
-            player.vehicle.applyEngineForce(-5000.0, 1)
-            player.vehicle.applyEngineForce(5000.0, 2)
-            player.vehicle.applyEngineForce(-5000.0, 3)    
+            player.vehicle.applyEngineForce(10000.0, 0)
+            player.vehicle.applyEngineForce(-10000.0, 1)
+            player.vehicle.applyEngineForce(10000.0, 2)
+            player.vehicle.applyEngineForce(-10000.0, 3)    
             player.is_accelerating = True
             player.is_braking = False
         
@@ -275,10 +275,10 @@ class Arena(object):
             return True
 
         if cmd == 'rr':
-            player.vehicle.applyEngineForce(-5000.0, 0)
-            player.vehicle.applyEngineForce(5000.0, 1)
-            player.vehicle.applyEngineForce(-5000.0, 2)
-            player.vehicle.applyEngineForce(5000.0, 3)
+            player.vehicle.applyEngineForce(-10000.0, 0)
+            player.vehicle.applyEngineForce(10000.0, 1)
+            player.vehicle.applyEngineForce(-10000.0, 2)
+            player.vehicle.applyEngineForce(10000.0, 3)
             player.is_accelerating = True
             player.is_braking = False
             #q = Quaternion(0, -0.05, 0, 1) * player.trans.getRotation()
@@ -294,10 +294,10 @@ class Arena(object):
             return True
 
         if cmd == 'fw':
-            player.vehicle.applyEngineForce(500.0, 0)
-            player.vehicle.applyEngineForce(500.0, 1)
-            player.vehicle.applyEngineForce(500.0, 2)
-            player.vehicle.applyEngineForce(500.0, 3)
+            player.vehicle.applyEngineForce(1000.0, 0)
+            player.vehicle.applyEngineForce(1000.0, 1)
+            player.vehicle.applyEngineForce(1000.0, 2)
+            player.vehicle.applyEngineForce(1000.0, 3)
             player.is_accelerating = True
             player.is_braking = False
             #player.vehicle.setBrake(0, 0)
@@ -313,10 +313,10 @@ class Arena(object):
             return True
 
         if cmd == 'bw':
-            player.vehicle.applyEngineForce(-500.0, 0)
-            player.vehicle.applyEngineForce(-500.0, 1)
-            player.vehicle.applyEngineForce(-500.0, 2)
-            player.vehicle.applyEngineForce(-500.0, 3)
+            player.vehicle.applyEngineForce(-1000.0, 0)
+            player.vehicle.applyEngineForce(-1000.0, 1)
+            player.vehicle.applyEngineForce(-1000.0, 2)
+            player.vehicle.applyEngineForce(-1000.0, 3)
             player.is_accelerating = True
             player.is_braking = False
             #orientation = player.body.getOrientation()
@@ -457,7 +457,7 @@ class Arena(object):
 
 class Player(object):
 
-    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=170):
+    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=150):
         self.sc_x = 5
         self.sc_y = 5
         self.sc_z = 5
@@ -498,6 +498,10 @@ class Player(object):
         self.is_braking = True 
         self.last_msg = None
         self.cmd = None
+	self.vehicle.setBrake(2, 0)
+        self.vehicle.setBrake(2, 1)
+        self.vehicle.setBrake(2, 2)
+        self.vehicle.setBrake(2, 3)
 
         self.color = color
         self.max_speed = max_speed
@@ -547,7 +551,7 @@ class Player(object):
         speed = self.vehicle.getCurrentSpeedKmHour()
         msg = ('{name}:{pos_x},{pos_y},{pos_z},'
                '{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},{rot_w:.2f},'
-               '{energy:.1f},{avatar},{sc_x},{sc_y},{sc_z},{color},{velocity:.2f}').format(
+               '{energy:.1f},{avatar},{sc_x},{sc_y},{sc_z},{color},{velocity}').format(
             name=self.name,
             pos_x=int(pos_x),
             pos_y=int(pos_y),
@@ -562,7 +566,7 @@ class Player(object):
             sc_y=self.sc_y,
             sc_z=self.sc_z,
             color=self.color,
-            velocity=speed
+            velocity=int(speed)
         )
         # no good
         #if speed == 0.00:
