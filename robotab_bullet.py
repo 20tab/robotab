@@ -80,6 +80,8 @@ class Bullet(Sphere):
     
     def __init__(self, game, player, damage=10, speed=100, _range=1500.0):
         super(Bullet, self).__init__(game.world, radius=30, mass=1.0)
+        self.body.setCollisionFlags(self.body.getCollisionFlags() | 2)
+        self.body.setActivationState(4)
         self.game = game 
         self.player = player
         self._range = _range
@@ -91,10 +93,28 @@ class Bullet(Sphere):
         if self.is_shooting:
             return
         self.is_shooting = True
+        self.game.useless_objects.append(self.trans)
+        self.trans = self.body.getCenterOfMassTransform()
+        self.trans.setOrigin(self.player.origin)
+        self.body.setCenterOfMassTransform(self.trans)
+        #self.motion_state.getWorldTransform(self.trans)
+        #self.trans2 = self.trans.getOrigin() + Vector3(0, 0, 10)
+        #self.motion_state.setWorldTransform(self.trans2)
         self.player.damage(1.0, 'himself')
-        #self.body.applyImpulse()
-        self.game.bullets.append(self)
-
+        #self.game.bullets.append(self)
+    
+    def animate(self):
+        if self._range <= 0:
+            self._range = 1500
+            self.is_shooting = False
+            self.game.bullets.remove(self)
+        self.motion_state.getWorldTransform(self.trans)
+        self.game.useless_objects.append(self.trans)
+        self.trans = self.trans.getOrigin() + Vector3(0, 0, 10)
+        self.motion_state.setWorldTransform(self.trans)
+        self._range -= 10
+        self.update_gfx()
+   
     def update_gfx(self):
         self.motion_state.getWorldTransform(self.trans)
         pos_x = self.origin.getX()
@@ -107,7 +127,7 @@ class Bullet(Sphere):
         rot_w = round(quaternion.getW(), 2)
         msg = ('!:{name}:{pos_x},{pos_y},{pos_z},'
                '{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},{rot_w:.2f}').format(
-            name=self.name,
+            name=self.player.name,
             pos_x=int(pos_x),
             pos_y=int(pos_y),
             pos_z=int(pos_z),
@@ -193,6 +213,7 @@ class Arena(object):
         self.ramps = []
         self.grounds = []
         self.all_players = []
+        self.useless_objects = []
         self.ground_coordinates = (
             #sc_x,   sc_y,   sc_z,     x,      y,      z,           r
             (2000,    250,   2000,     0,   -250,      0,           0),
@@ -294,11 +315,19 @@ class Arena(object):
 
     def msg_handler(self, player, msg):
         p, cmd = msg.split(':')
-        if cmd != 'AT':
-            try:
+        try:
+            if cmd == 'AT':
+                self.players[p].attack_cmd = cmd
+            else:
                 self.players[p].cmd = cmd
-            except KeyError:
-                pass
+        except KeyError:
+            print 'Player {} does not exists or is dead'.format(p)
+
+    def attack_cmd_handler(self, player, cmd):
+        if cmd == 'AT':
+            player.bullet.shoot()
+            return True
+        return False
 
     def cmd_handler(self, player, cmd):
         if cmd == 'rl':
@@ -374,7 +403,6 @@ class Arena(object):
                 else:
                     velocity = player.chassis.getLinearVelocity()
                     speed = velocity.length()
-                    print(speed)
                     if speed > (player.max_speed/2):
                         new_speed = (player.max_speed/2) / speed
                         velocity = Vector3(
@@ -390,9 +418,12 @@ class Arena(object):
                 if player.cmd:
                     self.cmd_handler(player, player.cmd)
                     player.cmd = None
+                if player.attack_cmd:
+                    self.attack_cmd_handler(player, player.attack_cmd)
+                    player.attack_cmd = None
                 player.update_gfx()
             for bullet in self.bullets:
-                 bullet.update_gfx()
+                 bullet.animate()
             t1 = uwsgi.micros() / 1000.0
             delta = t1 - t
             if delta < 33.33:
@@ -514,7 +545,6 @@ class Player(ArenaObject):
         self.vehicle.addWheel(Vector3(29.8, -31.5, -43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 3.0, self.tuning, False)
         self.is_accelerating = False 
         self.is_braking = True 
-        self.cmd = None
 	self.vehicle.setBrake(4, 0)
         self.vehicle.setBrake(4, 1)
         self.vehicle.setBrake(4, 2)
@@ -524,7 +554,9 @@ class Player(ArenaObject):
         self.max_speed = max_speed
         self.energy = 100.0
         self.game.all_players.append(self)
-        # self.bullet = Bullet(self.game, self)
+        self.bullet = Bullet(self.game, self)
+        self.cmd = None
+        self.attack_cmd = None
 
         # check if self.energy is 0, in such a case
         # trigger the kill procedure removing the player from the list
