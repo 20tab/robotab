@@ -34,6 +34,7 @@ var objects = [
     {texture: 'static/img/ROBO_02_TEXTURE.jpg', object: 'static/obj/ROBO_02_OK.obj', ref: undefined},
     {texture: 'static/img/missile_texture.jpg', object: 'static/obj/missile.obj'   , ref: undefined},
     {texture: 'static/img/muro_texture.jpg'   , object: 'static/obj/muro.obj'      , ref: undefined},
+    {texture: 'static/img/UVTORETTACOLOR.jpg' , object: 'static/obj/torretta.obj'  , ref: undefined},
     {texture: undefined                       , object: 'static/obj/power.obj'     , ref: undefined, color:0xFF0000},
     {texture: undefined                       , object: 'static/obj/heal.obj'      , ref: undefined, color:0x00FF00},
     {texture: undefined                       , object: 'static/obj/haste.obj'     , ref: undefined, color:0x0000FF},
@@ -162,7 +163,6 @@ function ws_recv(e) {
     }
     if (items[0] == 'sphere'){
         var args = items[1].split(',');
-        console.log(items[1]);
         if (moving_sphere == undefined){
             add_sphere(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
         }
@@ -376,6 +376,9 @@ function start_the_world() {
     stats.domElement.style.left = '0px';
     stats.domElement.style.bottom = '0px';
     document.getElementById('ThreeJS').appendChild(stats.domElement);
+    //objects[4].ref.scale.set(7, 7, 7);
+    //objects[4].ref.position.set(50, 50, 0);
+    //scene.add(objects[4].ref);
     //document.body.appendChild( stats.domElement );
 }
 
@@ -643,7 +646,6 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
     players[name].children[0].material = players[name].children[0].material.clone()
     players[name].children[0].material.color.setHex(color);
     players[name].name = name;
-    console.log(sc_x, sc_y, sc_z);
     players[name].scale.set(sc_x, sc_y, sc_z);
     players[name].energy = energy;
     players[name].name_and_energy = name + ': ' + energy;
@@ -773,13 +775,13 @@ function remove_player(player){
 
 function add_bonus_malus(id, bm_type, x, y, z){
     if (bm_type == 'power') {
-        bonus_malus[id] = objects[4].ref.clone();
-    }
-    else if (bm_type == 'heal') {
         bonus_malus[id] = objects[5].ref.clone();
     }
-    else if (bm_type == 'haste') {
+    else if (bm_type == 'heal') {
         bonus_malus[id] = objects[6].ref.clone();
+    }
+    else if (bm_type == 'haste') {
+        bonus_malus[id] = objects[7].ref.clone();
     }
     else {
         return;
@@ -815,7 +817,7 @@ function add_sphere(radius, x, y, z, rot_x, rot_y, rot_z, rot_w){
         'rot_w': 0.0,
     };
     scene.add(moving_sphere);
-    console.log(moving_sphere);
+    //console.log(moving_sphere);
 }
 
 function add_ground(size_x, size_y, size_z, x, y, z, r) {
@@ -865,7 +867,6 @@ function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
 
     if (posters.length > 0) {
         var texture_name = posters[Math.floor(Math.random()*posters.length)];
-        console.log(texture_name);
         var posterTexture = new THREE.ImageUtils.loadTexture( texture_name );
         posterTexture.needsUpdate = true;
         var posterMaterial = new THREE.MeshBasicMaterial( { map: posterTexture, side: THREE.DoubleSide} );
