@@ -12,32 +12,43 @@ from bulletphysics import *
 
 class Sphere(object):
 
-    def __init__(self, world):
-        self.radius = 50
-        self.mass = 1000.0
+   def __init__(self, world, radius, mass):
+        self.radius = radius
         self.shape = SphereShape(self.radius)
         q = Quaternion(0, 0, 0, 1)
         q.setRotation(Vector3(0.0, 1.0, 0.0), 0.0)
         self.motion_state = DefaultMotionState(
             Transform(q, Vector3(0, 100, 0)))
         self.inertia = Vector3(0, 0, 0)
-        self.shape.calculateLocalInertia(self.mass, self.inertia)
+        self.shape.calculateLocalInertia(mass, self.inertia)
         construction_info = RigidBodyConstructionInfo(
-            self.mass, self.motion_state, self.shape, self.inertia)
+            mass, self.motion_state, self.shape, self.inertia)
         self.body = RigidBody(construction_info)
         world.addRigidBody(self.body)
         self.trans = Transform()
         self.origin = self.trans.getOrigin()
+
+
+class ArenaObject(object):
+
+    def __init__(self):
         self.last_msg = None
         self.arena = "arena{}".format(uwsgi.worker_id())
         self.redis = redis.StrictRedis()
         self.channel = self.redis.pubsub()
         self.channel.subscribe(self.arena)
         self.redis_fd = self.channel.connection._sock.fileno()
-        self.update_gfx()
 
     def send_all(self, msg):
         self.redis.publish(self.arena, msg)
+
+
+class ArenaSphere(Sphere, ArenaObject):
+
+    def __init__(self, world):
+        Sphere.__init__(self, world, radius=50, mass=1000.0)
+        ArenaObject.__init__(self)
+        self.update_gfx()
 
     def update_gfx(self):
         self.motion_state.getWorldTransform(self.trans)
@@ -61,9 +72,61 @@ class Sphere(object):
             rot_w=rot_w + 0.0,
         )
         if msg != self.last_msg:
-            #print msg
             self.send_all(msg)
             self.last_msg = msg
+
+
+class Bullet(Sphere):
+    
+    def __init__(self, game, player, damage=10, speed=100, _range=1500.0):
+        super(Bullet, self).__init__(game.world, radius=30, mass=1.0)
+        self.game = game 
+        self.player = player
+        self._range = _range
+        self.damage = damage
+        self.speed = speed
+        self.is_shooting = False
+
+    def shoot(self):
+        if self.is_shooting:
+            return
+        self.is_shooting = True
+        self.player.damage(1.0, 'himself')
+        #self.body.applyImpulse()
+        self.game.bullets.append(self)
+
+    def update_gfx(self):
+        self.motion_state.getWorldTransform(self.trans)
+        pos_x = self.origin.getX()
+        pos_y = self.origin.getY()
+        pos_z = self.origin.getZ()
+        quaternion = self.trans.getRotation()
+        rot_x = round(quaternion.getX(), 2)
+        rot_y = round(quaternion.getY(), 2)
+        rot_z = round(quaternion.getZ(), 2)
+        rot_w = round(quaternion.getW(), 2)
+        msg = ('!:{name}:{pos_x},{pos_y},{pos_z},'
+               '{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},{rot_w:.2f}').format(
+            name=self.name,
+            pos_x=int(pos_x),
+            pos_y=int(pos_y),
+            pos_z=int(pos_z),
+            rot_x=rot_x + 0.0,
+            rot_y=rot_y + 0.0,
+            rot_z=rot_z + 0.0,
+            rot_w=rot_w + 0.0,
+        )
+        self.player.send_all(msg)
+        #if condition:
+        #     self.game.animations.remove(self)
+        #     self.clean()
+        #     self.is_shooting = False 
+    
+    def clean(self):
+        self.body.setCenterOfMassTransform(self.player.trans.getIdentity())
+        self.body.setLinearVelocity(Vector3(0, 0, 0))
+        self.body.setAngularVelocity(Vector3(0, 0, 0))
+    
 
 class StaticBox(object):
 
@@ -118,7 +181,7 @@ class Arena(object):
             'posters/pycon.jpg'
         ]
 
-        self.animations = []
+        self.bullets = []
         self.players = {}
         self.waiting_players = []
         self.min_players = min_players
@@ -162,19 +225,19 @@ class Arena(object):
         )
 
         self.spawn_points = (
-            #    x,     y,     z,                r,    color
+            #    x,     y,     z,            r,    color
             #(    0,  1650,         math.pi),
             #(    0, -1650,               0),
-            ( -935,    35,   935,  3 * math.pi / 4, 0x7777AA),
-            (  935,    35,   935,  5 * math.pi / 4, 0x770000),
-            (  935,    35,  -935,  7 * math.pi / 4, 0x007700),
-            ( -935,    35,  -935,      math.pi / 4, 0x777700),
-            (-1650,    35,  1650,  3 * math.pi / 4, 0xAA00AA),
+            ( -935,    35,   935,  3*math.pi/4, 0x7777AA),
+            (  935,    35,   935,  5*math.pi/4, 0x770000),
+            (  935,    35,  -935,  7*math.pi/4, 0x007700),
+            ( -935,    35,  -935,    math.pi/4, 0x777700),
+            (-1650,    35,  1650,  3*math.pi/4, 0xAA00AA),
             #(-1650,     0,     math.pi / 2),
             #( 1650,     0, 3 * math.pi / 2),
-            ( 1650,    35,  1650,  5 * math.pi / 4, 0x007777),
-            ( 1650,    35, -1650,  7 * math.pi / 4, 0x000077),
-            (-1650,    35, -1650,      math.pi / 4, 0xFFAA77),
+            ( 1650,    35,  1650,  5*math.pi/4, 0x007777),
+            ( 1650,    35, -1650,  7*math.pi/4, 0x000077),
+            (-1650,    35, -1650,    math.pi/4, 0xFFAA77),
 
         )
 
@@ -223,7 +286,7 @@ class Arena(object):
 
         self.spawn_iterator = iter(self.spawn_points)
 
-        self.sphere = Sphere(self.world)
+        self.sphere = ArenaSphere(self.world)
 
 
     def broadcast(self, msg):
@@ -245,19 +308,6 @@ class Arena(object):
             player.vehicle.applyEngineForce(-10000.0, 3)    
             player.is_accelerating = True
             player.is_braking = False
-        
-
-            #player.trans.setRotation(q)
-            #player.body.activate(True)
-            #player.body.setCenterOfMassTransform(player.trans)
-
-            #player.body.activate(True)
-            #player.body.setWorldTransform(player.trans)
-            #orientation = player.body.getOrientation()
-            #v = Vector3(0, 1000, 0).rotate(
-            #    orientation.getAxis(), orientation.getAngle())
-            #player.body.activate(True)
-            #player.body.applyTorqueImpulse(v)
             return True
 
         if cmd == 'rr':
@@ -267,16 +317,6 @@ class Arena(object):
             player.vehicle.applyEngineForce(10000.0, 3)
             player.is_accelerating = True
             player.is_braking = False
-            #q = Quaternion(0, -0.05, 0, 1) * player.trans.getRotation()
-            #player.trans.setRotation(q)
-            #player.body.activate(True)
-            #player.body.setCenterOfMassTransform(player.trans)
-
-            #orientation = player.body.getOrientation()
-            #v = Vector3(0, -1000, 0).rotate(
-            #    orientation.getAxis(), orientation.getAngle())
-            #player.body.activate(True)
-            #player.body.applyTorqueImpulse(v)
             return True
 
         if cmd == 'fw':
@@ -286,16 +326,6 @@ class Arena(object):
             player.vehicle.applyEngineForce(1000.0, 3)
             player.is_accelerating = True
             player.is_braking = False
-            #player.vehicle.setBrake(0, 0)
-            #player.vehicle.setBrake(0, 1)
-            #player.vehicle.setBrake(0, 2)
-            #player.vehicle.setBrake(0, 3)
-           
-            #orientation = player.body.getOrientation()
-            #v = Vector3(0, 0, 6000).rotate(
-            #    orientation.getAxis(), orientation.getAngle())
-            #player.body.activate(True)
-            #player.body.applyCentralForce(v)
             return True
 
         if cmd == 'bw':
@@ -305,11 +335,6 @@ class Arena(object):
             player.vehicle.applyEngineForce(-1000.0, 3)
             player.is_accelerating = True
             player.is_braking = False
-            #orientation = player.body.getOrientation()
-            #v = Vector3(0, 0, -6000).rotate(
-            #    orientation.getAxis(), orientation.getAngle())
-            #player.body.activate(True)
-            #player.body.applyCentralImpulse(v)
             return True
 
         return False
@@ -347,9 +372,9 @@ class Arena(object):
                     player.vehicle.applyEngineForce(0, 3)
                     player.is_braking = True
                 else:
-                    #speed = player.vehicle.getCurrentSpeedKmHour()
                     velocity = player.chassis.getLinearVelocity()
                     speed = velocity.length()
+                    print(speed)
                     if speed > (player.max_speed/2):
                         new_speed = (player.max_speed/2) / speed
                         velocity = Vector3(
@@ -357,11 +382,17 @@ class Arena(object):
                             new_speed * velocity.getY(),
                             new_speed * velocity.getZ())
                         player.chassis.setLinearVelocity(velocity)
+                    elif speed < 0.001:
+                        quaternion = player.trans.getRotation()
+                        if not -0.5 < quaternion.getX() < 0.5 or not -0.5 < quaternion.getZ() < 0.5:
+                             player.end('overturn')
                 player.is_accelerating = False
                 if player.cmd:
                     self.cmd_handler(player, player.cmd)
                     player.cmd = None
                 player.update_gfx()
+            for bullet in self.bullets:
+                 bullet.update_gfx()
             t1 = uwsgi.micros() / 1000.0
             delta = t1 - t
             if delta < 33.33:
@@ -441,9 +472,10 @@ class Arena(object):
         self.broadcast('waiting for players')
 
 
-class Player(object):
+class Player(ArenaObject):
 
     def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=150):
+        super(Player, self).__init__()
         self.sc_x = 5
         self.sc_y = 5
         self.sc_z = 5
@@ -482,21 +514,15 @@ class Player(object):
         self.vehicle.addWheel(Vector3(29.8, -31.5, -43), Vector3(0, -1, 0), Vector3(-1, 0, 0), 0.0, 3.0, self.tuning, False)
         self.is_accelerating = False 
         self.is_braking = True 
-        self.last_msg = None
         self.cmd = None
-	self.vehicle.setBrake(3, 0)
-        self.vehicle.setBrake(3, 1)
-        self.vehicle.setBrake(3, 2)
-        self.vehicle.setBrake(3, 3)
+	self.vehicle.setBrake(4, 0)
+        self.vehicle.setBrake(4, 1)
+        self.vehicle.setBrake(4, 2)
+        self.vehicle.setBrake(4, 3)
 
         self.color = color
         self.max_speed = max_speed
         self.energy = 100.0
-        self.arena = "arena{}".format(uwsgi.worker_id())
-        self.redis = redis.StrictRedis()
-        self.channel = self.redis.pubsub()
-        self.channel.subscribe(self.arena)
-        self.redis_fd = self.channel.connection._sock.fileno()
         self.game.all_players.append(self)
         # self.bullet = Bullet(self.game, self)
 
@@ -521,9 +547,6 @@ class Player(object):
     def end(self, status):
         self.send_all('kill:{},{}'.format(status, self.name))
         del self.game.players[self.name]
-
-    def send_all(self, msg):
-        self.redis.publish(self.arena, msg)
 
     def update_gfx(self):
         self.motion_state.getWorldTransform(self.trans)
@@ -559,7 +582,6 @@ class Player(object):
         #if speed == 0.00:
         #    self.damage(1.0)
         if msg != self.last_msg:
-            #print msg
             self.send_all(msg)
             self.last_msg = msg
 
