@@ -78,41 +78,53 @@ class ArenaSphere(Sphere, ArenaObject):
 
 class Bullet(Sphere):
     
-    def __init__(self, game, player, damage=10, speed=100, _range=1500.0):
-        super(Bullet, self).__init__(game.world, radius=30, mass=1.0)
+    def __init__(self, game, player, damage=10, speed=50, _range=1500.0):
+        super(Bullet, self).__init__(game.world, radius=30, mass=0.0)
         self.body.setCollisionFlags(self.body.getCollisionFlags() | 2)
         self.body.setActivationState(4)
         self.game = game 
         self.player = player
         self._range = _range
         self.damage = damage
+        self.v = Vector3(0, 0, 1)
+        self.q = Quaternion(0, 0, 0, 0)
         self.speed = speed
+        self.distance = self._range
         self.is_shooting = False
 
     def shoot(self):
-        if self.is_shooting:
+        if self.distance != self._range:
             return
-        self.is_shooting = True
-        self.game.useless_objects.append(self.trans)
-        self.trans = self.body.getCenterOfMassTransform()
-        self.trans.setOrigin(self.player.origin)
-        self.body.setCenterOfMassTransform(self.trans)
-        #self.motion_state.getWorldTransform(self.trans)
-        #self.trans2 = self.trans.getOrigin() + Vector3(0, 0, 10)
-        #self.motion_state.setWorldTransform(self.trans2)
+        #TO MOVE KINEMATIC BODIES - ADJUST THE WORLD TRANSFORM OF THE BODIES MOTION STATE AND NOT THE RIGID BODY
+        #REMEMBER TO CALL GETWORLDTRANSFORM AFTER UPDATE TO GET NEW POSITION
+        self.distance -= 1
+        trans = Transform()
+        trans.setIdentity()
+        #direction = self.q.quatRotate(self.player.trans.getRotation(), self.v)
+        #v = Vector3(
+        #    direction.getX()*50,
+        #    direction.getY()*50,
+        #    direction.getZ()*50)
+        trans.setOrigin(self.player.origin)
+        self.motion_state.setWorldTransform(trans)
         self.player.damage(1.0, 'himself')
-        #self.game.bullets.append(self)
+        self.game.bullets.append(self)
     
     def animate(self):
-        if self._range <= 0:
-            self._range = 1500
-            self.is_shooting = False
+        if self.distance <= 0:
             self.game.bullets.remove(self)
-        self.motion_state.getWorldTransform(self.trans)
-        self.game.useless_objects.append(self.trans)
-        self.trans = self.trans.getOrigin() + Vector3(0, 0, 10)
-        self.motion_state.setWorldTransform(self.trans)
-        self._range -= 10
+            self.distance = self._range
+            return
+        trans = Transform()
+        trans.setIdentity()
+        direction = self.q.quatRotate(self.player.trans.getRotation(), self.v)
+        v = Vector3(
+            direction.getX()*self.speed,
+            direction.getY()*self.speed,
+            direction.getZ()*self.speed)
+        trans.setOrigin(self.origin + v)
+        self.motion_state.setWorldTransform(trans)
+        self.distance -= self.speed 
         self.update_gfx()
    
     def update_gfx(self):
@@ -126,15 +138,17 @@ class Bullet(Sphere):
         rot_z = round(quaternion.getZ(), 2)
         rot_w = round(quaternion.getW(), 2)
         msg = ('!:{name}:{pos_x},{pos_y},{pos_z},'
-               '{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},{rot_w:.2f}').format(
+               '{rot_x:.2f},{rot_y:.2f},{rot_z:.2f},{rot_w:.2f},'
+               '{distance}').format(
             name=self.player.name,
             pos_x=int(pos_x),
-            pos_y=int(pos_y),
+            pos_y=int(pos_y)+30,
             pos_z=int(pos_z),
             rot_x=rot_x + 0.0,
             rot_y=rot_y + 0.0,
             rot_z=rot_z + 0.0,
             rot_w=rot_w + 0.0,
+            distance=self.distance,
         )
         self.player.send_all(msg)
         #if condition:
@@ -213,7 +227,6 @@ class Arena(object):
         self.ramps = []
         self.grounds = []
         self.all_players = []
-        self.useless_objects = []
         self.ground_coordinates = (
             #sc_x,   sc_y,   sc_z,     x,      y,      z,           r
             (2000,    250,   2000,     0,   -250,      0,           0),
@@ -566,6 +579,7 @@ class Player(ArenaObject):
         if not self.game.started:
             return
         self.energy -= amount
+        print(self.energy)
         if self.energy <= 0:
             if attacker:
                 self.game.broadcast(
@@ -573,8 +587,8 @@ class Player(ArenaObject):
                 self.end('loser')
             else:
                 self.end('overturn')
-        else:
-            self.update_gfx()
+        #else:
+        #    self.update_gfx()
 
     def end(self, status):
         self.send_all('kill:{},{}'.format(status, self.name))

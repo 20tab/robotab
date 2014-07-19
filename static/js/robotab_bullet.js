@@ -60,7 +60,7 @@ for (i in avatars) {
 }
 
 function ws_recv(e) {
-    //console.log(e.data);
+    console.log(e.data);
     var items = e.data.split(':');
     if (items[0] == 'arena') {
         var args = items[1].split(',');
@@ -89,13 +89,15 @@ function ws_recv(e) {
             return;
         }
 
-        var cmd = items[2];
-        var args = cmd.split(',');
-        player.bullet.ws['r'] = args[0];
-        player.bullet.ws['x'] = args[1];
-        player.bullet.ws['y'] = args[2];
-        player.bullet.ws['z'] = args[3];
-        player.bullet.ws['R'] = parseFloat(args[4]);
+        var args = items[2].split(',');
+        player.bullet.ws['x'] = args[0];
+        player.bullet.ws['y'] = args[1];
+        player.bullet.ws['z'] = args[2];
+        player.bullet.ws['rot_x'] = args[3];
+        player.bullet.ws['rot_y'] = args[4];
+        player.bullet.ws['rot_z'] = args[5];
+        player.bullet.ws['rot_w'] = args[6];
+        player.bullet.ws['R'] = parseFloat(args[7]);
         player.bullet.dirty = true;
         return;
     }
@@ -202,14 +204,14 @@ function ws_recv(e) {
         return;
     }
 
-    player.ws['x'] = parseFloat(args[0]);
-    player.ws['y'] = parseFloat(args[1]);
-    player.ws['z'] = parseFloat(args[2]);
+    player.ws['x'] = parseInt(args[0]);
+    player.ws['y'] = parseInt(args[1]);
+    player.ws['z'] = parseInt(args[2]);
     player.ws['rot_x'] = parseFloat(args[3]);
     player.ws['rot_y'] = parseFloat(args[4]);
     player.ws['rot_z'] = parseFloat(args[5]);
     player.ws['rot_w'] = parseFloat(args[6]);
-    player.ws['velocity'] = parseFloat(args[13]);
+    player.ws['velocity'] = parseInt(args[13]);
 
     player.energy = parseFloat(args[7]);
     player.name_and_energy = items[0] + ': ' + player.energy;
@@ -233,13 +235,10 @@ function init(){
 
     renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.setSize(ARENA_WIDTH, ARENA_HEIGHT);
-    //renderer.shadowMapEnabled = true;
 
     container = document.getElementById("ThreeJS");
     container.appendChild(renderer.domElement);
 
-    //var ambient = new THREE.AmbientLight(0x333333);
-    //scene.add(ambient);
 
     var spotlight = new THREE.PointLight(0xffffff, 1, 0);
     spotlight.position.set(-2000, 2000, 2000);
@@ -253,54 +252,6 @@ function init(){
     var spotlight = new THREE.PointLight(0xffffff, 1, 0);
     spotlight.position.set(-2000, 2000, -7000);
     scene.add(spotlight);
-    //var floorTexture = new THREE.ImageUtils.loadTexture( 'static/img/panel35.jpg' );
-    //floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-    //floorTexture.repeat.set( 10, 10 );
-    //var floorMaterial = new THREE.MeshPhongMaterial( { map: floorTexture , side: THREE.DoubleSide } );
-    //var floorGeometry = new THREE.PlaneGeometry(4000, 4000);
-    //var floor = new THREE.Mesh(floorGeometry, floorMaterial);
-    //floor.position.y = -0.5;
-    //floor.rotation.x = Math.PI / 2;
-    ////floor.receiveShadow = true;
-    //scene.add(floor);
-
-
-    //var spotlight = new THREE.SpotLight(0xffffff);
-    //spotlight.position.set(-2000, 450, -2000);
-    ////spotlight.shadowCameraVisible = true;
-    ////spotlight.shadowDarkness = 0.95;
-    //spotlight.intensity = 2;
-    //// must enable shadow casting ability for the light
-    ////spotlight.castShadow = true;
-    //scene.add(spotlight);
-
-    //var spotlight = new THREE.SpotLight(0xffffff);
-    //    spotlight.position.set(2000, 450, 2000);
-    //    //spotlight.shadowCameraVisible = true;
-    //    //spotlight.shadowDarkness = 0.95;
-    //    spotlight.intensity = 2;
-    //    // must enable shadow casting ability for the light
-    //    //spotlight.castShadow = true;
-    //    scene.add(spotlight);
-
-    //var spotlight = new THREE.SpotLight(0xffffff);
-    //    spotlight.position.set(2000, 450, -2000);
-    //    //spotlight.shadowCameraVisible = true;
-    //    //spotlight.shadowDarkness = 0.95;
-    //    spotlight.intensity = 2;
-    //    // must enable shadow casting ability for the light
-    //    //spotlight.castShadow = true;
-    //    scene.add(spotlight);
-
-    //var spotlight = new THREE.SpotLight(0xffffff);
-    //    spotlight.position.set(-2000, 450, 2000);
-    //    //spotlight.shadowCameraVisible = true;
-    //    //spotlight.shadowDarkness = 0.95;
-    //    spotlight.intensity = 2;
-    //    // must enable shadow casting ability for the light
-    //    //spotlight.castShadow = true;
-    //    scene.add(spotlight);
-
 
     var Ltexture = THREE.ImageUtils.loadTexture('static/img/nebula.jpg');
     var backgroundMesh = new THREE.Mesh(
@@ -539,10 +490,15 @@ function update(td) {
             }
             //player.bullet.children[0].visible = true;
             player.bullet.visible = true;
-            player.bullet.rotation.y = player.bullet.ws['r'];
-            player.bullet.position.x = player.bullet.ws['x'];
-            player.bullet.position.y = player.bullet.ws['y'];
-            player.bullet.position.z = player.bullet.ws['z'];
+            player.bullet.position.set(
+                player.bullet.ws['x'],
+                player.bullet.ws['y'],
+                player.bullet.ws['z']);
+            player.bullet.quaternion.set(
+                player.bullet.ws['rot_x'],
+                player.bullet.ws['rot_y'], 
+                player.bullet.ws['rot_z'], 
+                player.bullet.ws['rot_w']);
             player.last_bullet = player.bullet.ws['R'];
         }
 
@@ -563,11 +519,11 @@ function update(td) {
                 player.ws['x'],
                 player.ws['y'],
                 player.ws['z']);
-	    player.sound.source.playbackRate.value=Math.abs(player.ws['velocity']) / 300;
-            player.sound.position.set(
-                player.ws['x'],
-                player.ws['y'],
-                player.ws['z']);
+	    //player.sound.source.playbackRate.value=Math.abs(player.ws['velocity']) / 300;
+            //player.sound.position.set(
+               // player.ws['x'],
+                //player.ws['y'],
+                //player.ws['z']);
         }
 
         if ((player.dirty && player.name == me && !use_eagle_camera) || camera_changed){
@@ -651,8 +607,8 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
     players[name].name_and_energy = name + ': ' + energy;
     players[name].bonus = '';
     players[name].last_bullet = 0;
-    players[name].sound = new THREE.AudioObject( [ 'static/sounds/move-loop.mp3' ]);
-    scene.add(players[name].sound);
+    //players[name].sound = new THREE.AudioObject( [ 'static/sounds/move-loop.mp3' ]);
+    //scene.add(players[name].sound);
     //players[name].sound.play();
     // Create a single Emitter
 
@@ -707,6 +663,7 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
     bullet.scale.set(sc_x, sc_y, sc_z);
     //bullet.children[0].visible = false;
     bullet.visible = false;
+    bullet.useQuaternion = true;
     //var axis = new THREE.Vector3(0, 1, 0);
     //bullet.rotateOnAxis(axis, 90);
     scene.add(bullet);
@@ -805,7 +762,7 @@ function add_sphere(radius, x, y, z, rot_x, rot_y, rot_z, rot_w){
     var sphereMaterial = new THREE.MeshPhongMaterial({map: sphereTexture});
     moving_sphere = new THREE.Mesh(geometry, sphereMaterial);
     moving_sphere.position.set(x, y, z);
-    //moving_sphere.useQuaternion = true;
+    moving_sphere.useQuaternion = true;
     moving_sphere.quaternion.set(rot_x, rot_y, rot_z, rot_w);
     moving_sphere.ws = {
         'x': 0.0,
