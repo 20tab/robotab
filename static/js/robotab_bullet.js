@@ -10,7 +10,7 @@ var hud_pos = 20;
 var scene, camera, eagleCamera, backCamera, renderer, backgroundScene, backgroundCamera;
 var keyboard;
 var can_use_keyboard = false;
-
+var starting = false;
 var container;
 var raycaster;
 var me, avatar;
@@ -62,7 +62,7 @@ for (i in avatars) {
 }
 
 function ws_recv(e) {
-    //console.log(e.data);
+    console.log(e.data);
     var items = e.data.split(':');
     if (items[0] == 'arena') {
         var args = items[1].split(',');
@@ -475,15 +475,14 @@ function update(td) {
 
             if (player.bullet.ws['R'] <= 0) {
                 //player.bullet.children[0].visible = false;
-                player.bullet.visible = false;
+                player.bullet.children[0].visible = false;
                 document.getElementById('fire').pause();
                 return;
             }
             else if (player.bullet.ws['R'] >= player.last_bullet){
                 player.engineGroup.triggerPoolEmitter( 1, new THREE.Vector3( 0, 3, 10) );
             }
-            //player.bullet.children[0].visible = true;
-            player.bullet.visible = true;
+            player.bullet.children[0].visible = true;
             player.bullet.position.set(
                 player.bullet.ws['x'],
                 player.bullet.ws['y'],
@@ -593,7 +592,7 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
     players[name].children[0].material.color.setHex(color);
     bullet.children[0].material = bullet.children[0].material.clone()
     bullet.children[0].material.color.setHex(color);
-    bullet.visible = false;
+    bullet.children[0].visible = false;
     bullet.ws = {};
     bullet.scale.set(sc_x*2, sc_y*2, sc_z*2);
     players[name].ws = {'velocity': 0};
@@ -660,18 +659,8 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
     //bullet.children[0].visible = false;
     //bullet.useQuaternion = true;
 
-    var player_hud = document.createElement('div');
-    player_hud.id = 'player_' + name;
-    player_hud.setAttribute('style', "top:" + hud_pos + "px");
-    player_hud.className = 'players_energy';
-    hud_pos += 20;
-
-    document.getElementById('ThreeJS').appendChild(player_hud);
-    players[name].hud = player_hud;
-
-    draw_hud_div(players[name]);
-
     if (name == me){
+        starting = true;
         can_use_keyboard = true;
         players[name].add(backCamera);
         backCamera.position.set(0, 20, -80);
@@ -692,6 +681,17 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
         health = document.getElementById('health');
         particleSystem.visible = true;
     }
+    if (starting){
+        var player_hud = document.createElement('div');
+        player_hud.id = 'player_' + name;
+        player_hud.setAttribute('style', "top:" + hud_pos + "px");
+        player_hud.className = 'players_energy';
+        hud_pos += 20;
+        document.getElementById('ThreeJS').appendChild(player_hud);
+        players[name].hud = player_hud;
+        draw_hud_div(players[name]);
+    }
+
     players[name].position.x = x;
     players[name].position.y = y;
     players[name].position.z = z;

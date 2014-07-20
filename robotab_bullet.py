@@ -12,13 +12,13 @@ from bulletphysics import *
 
 class Sphere(object):
 
-   def __init__(self, world, radius, mass):
+   def __init__(self, world, radius, mass, x=0, y=50, z=0):
         self.radius = radius
         self.shape = SphereShape(self.radius)
         q = Quaternion(0, 0, 0, 1)
         q.setRotation(Vector3(0.0, 1.0, 0.0), 0.0)
         self.motion_state = DefaultMotionState(
-            Transform(q, Vector3(0, 100, 0)))
+            Transform(q, Vector3(x, y, z)))
         self.inertia = Vector3(0, 0, 0)
         self.shape.calculateLocalInertia(mass, self.inertia)
         construction_info = RigidBodyConstructionInfo(
@@ -77,17 +77,19 @@ class ArenaSphere(Sphere, ArenaObject):
 
 
 class Bullet(Sphere):
+     
+    standby_v = Vector3(0, -500, 0)
+    rotation_q = Quaternion(0, -0.3, 0, 1)
+    forward_v = Vector3(0, 0, 1)
     
-    def __init__(self, game, player, damage=10, speed=75, _range=1500):
-        super(Bullet, self).__init__(game.world, radius=30, mass=0.0)
+    def __init__(self, game, player, damage=10, speed=60, _range=1500):
+        super(Bullet, self).__init__(game.world, radius=20, mass=0.0, x=Bullet.standby_v.getX(), y=Bullet.standby_v.getY(), z=Bullet.standby_v.getZ())
         self.body.setCollisionFlags(self.body.getCollisionFlags() | 2)
         self.body.setActivationState(4)
         self.game = game 
         self.player = player
         self._range = _range
         self.damage = damage
-        self.v = Vector3(0, 0, 1)
-        self.q = Quaternion(0, 0, 0, 0)
         self.speed = speed
         self.distance = self._range
 
@@ -97,40 +99,39 @@ class Bullet(Sphere):
         #TO MOVE KINEMATIC BODIES - ADJUST THE WORLD TRANSFORM OF THE BODIES MOTION STATE AND NOT THE RIGID BODY
         #REMEMBER TO CALL GETWORLDTRANSFORM AFTER UPDATE TO GET NEW POSITION
         self.distance -= 1
-        trans = Transform()
-        trans.setIdentity()
-        direction = self.q.quatRotate(self.player.trans.getRotation(), self.v)
+        direction = Bullet.rotation_q.quatRotate(self.player.trans.getRotation(), Bullet.forward_v)
         v = Vector3(
-            direction.getX()*75,
-            direction.getY()*75,
-            direction.getZ()*75)
-        trans.setOrigin(self.player.origin + v)
-        self.motion_state.setWorldTransform(trans)
-        self.player.damage(1.0, 'himself')
+            direction.getX()*60,
+            direction.getY()*60,
+            direction.getZ()*60)
+        self.trans.setOrigin(self.player.origin + v)
+        self.motion_state.setWorldTransform(self.trans)
         self.motion_state.getWorldTransform(self.trans)
+        self.player.damage(1.0, 'himself')
         self.game.bullets.append(self)
     
     def animate(self):
         if self.distance <= 0:
             self.game.bullets.remove(self)
+            self.trans.setOrigin(Bullet.standby_v)
             self.distance = self._range
+            self.motion_state.setWorldTransform(self.trans)
             return
         self.distance -= self.speed 
-        trans = Transform()
-        trans.setIdentity()
-        direction = self.q.quatRotate(self.player.trans.getRotation(), self.v)
+        direction = Bullet.rotation_q.quatRotate(self.player.trans.getRotation(), Bullet.forward_v)
         v = Vector3(
             direction.getX()*self.speed,
             direction.getY()*self.speed,
             direction.getZ()*self.speed)
-        trans.setOrigin(self.origin + v)
-        q = Quaternion(0, -0.3, 0, 1) * self.trans.getRotation()
-        trans.setRotation(q)
-        self.motion_state.setWorldTransform(trans)
+        self.trans.setOrigin(self.origin + v)
+        q = Bullet.rotation_q * self.trans.getRotation()
+        self.trans.setRotation(q)
+        self.motion_state.setWorldTransform(self.trans)
+        self.motion_state.getWorldTransform(self.trans)
         self.update_gfx()
    
     def update_gfx(self):
-        self.motion_state.getWorldTransform(self.trans)
+        #self.motion_state.getWorldTransform(self.trans)
         pos_x = self.origin.getX()
         pos_y = self.origin.getY()
         pos_z = self.origin.getZ()
@@ -153,10 +154,6 @@ class Bullet(Sphere):
             distance=self.distance,
         )
         self.player.send_all(msg)
-        #if condition:
-        #     self.game.animations.remove(self)
-        #     self.clean()
-        #     self.is_shooting = False 
     
     def clean(self):
         self.body.setCenterOfMassTransform(self.player.trans.getIdentity())
@@ -216,7 +213,7 @@ class Arena(object):
             'posters/beri.jpg',
             'posters/pycon.jpg'
         ]
-
+        self.debug = False 
         self.bullets = []
         self.players = {}
         self.waiting_players = []
@@ -257,7 +254,7 @@ class Arena(object):
         self.ramps_coordinates = (
              (350,     10,    700, -1650,     172, -2679,  math.pi/12),
              (350,     10,    700,  1650,     172, -2679,  math.pi/12),
-             (350,     10,    500,     0,     370, -7000,  math.pi/10)
+             (350,     10,    500,     0,     300, -7000,  math.pi/10)
         )
 
         self.spawn_points = (
@@ -382,23 +379,32 @@ class Arena(object):
             return True
 
         return False
+    
+    def cb(self, world, ts):
+        nm = world.getDispatcher().getNumManifolds()
+        #print "cb", nm
+        for i in range(0, nm):
+            manifold = world.getDispatcher().getManifoldByIndexInternal(i)
+            #print("body0", manifold.getBody0())
+            #print("body1", manifold.getBody1())
+        #print("hello", ts, world.getWorldUserInfo())
 
     def engine_start(self):
         del self.greenlets['engine']
         print('engine started')
+        self.world.setInternalTickCallback(self.cb, 17)
         while True:
             t = uwsgi.micros() / 1000.0
-            """
-            if len(self.players) == 1 and self.started:
-                self.finished.set()
-                self.winning_logic()
-                self.restart_game(2)
-                break
-            elif len(self.players) == 0:
-                self.finished.set()
-                self.restart_game()
-                break
-            """
+            if not self.debug: 
+                if len(self.players) == 1 and self.started:
+                    self.finished.set()
+                    self.winning_logic()
+                    self.restart_game(10)
+                    break
+                elif len(self.players) == 0:
+                    self.finished.set()
+                    self.restart_game()
+                    break
             self.world.stepSimulation(1, 30)
             self.sphere.update_gfx()
             for p in self.players.keys():
@@ -408,7 +414,8 @@ class Arena(object):
                    continue
                 position = player.trans.getOrigin()
                 if position.getY() < -420:
-                    player.end('fallen')
+                    player.end('loser')
+                    continue
                 if not player.is_accelerating and not player.is_braking:
                     player.vehicle.applyEngineForce(0, 0)
                     player.vehicle.applyEngineForce(0, 1)
@@ -428,7 +435,8 @@ class Arena(object):
                     elif speed < 0.001:
                         quaternion = player.trans.getRotation()
                         if not -0.5 < quaternion.getX() < 0.5 or not -0.5 < quaternion.getZ() < 0.5:
-                             player.end('overturn')
+                             player.end('loser')
+                             continue
                 player.is_accelerating = False
                 if player.cmd:
                     self.cmd_handler(player, player.cmd)
@@ -449,7 +457,6 @@ class Arena(object):
     def start(self):
         del self.greenlets['start']
         print("START!!")
-        #self.warming_up = True
 
         while len(self.players) < self.min_players:
             # for p in self.players:
@@ -489,7 +496,8 @@ class Arena(object):
 
     def spawn_greenlets(self):
         for greenlet in self.greenlets.keys():
-            #if len(self.players) >= self.min_players:
+            if self.debug and greenlet == 'start':
+                continue
             if len(self.players) >= 1:
                 gevent.spawn(self.greenlets[greenlet])
 
@@ -506,7 +514,7 @@ class Arena(object):
                 'next game will start in {} seconds'.format(countdown))
             countdown -= 1
             gevent.sleep(1)
-        #self.finished.clear()
+        self.finished.clear()
         self.players = {}
         print('\n\n', self.waiting_players, '\n\n')
         if len(self.waiting_players) > 0:
@@ -516,11 +524,12 @@ class Arena(object):
                     break
         self.finished.clear()
         self.broadcast('waiting for players')
+        print(self.players, '\n\n\n\n')
 
 
 class Player(ArenaObject):
 
-    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=150):
+    def __init__(self, game, name, avatar, fd, x, y, z, r, color, max_speed=108):
         super(Player, self).__init__()
         self.sc_x = 5
         self.sc_y = 5
@@ -586,14 +595,13 @@ class Player(ArenaObject):
             if attacker:
                 self.game.broadcast(
                     '{} was killed by {}'.format(self.name, attacker))
-                self.end('loser')
-            else:
-                self.end('overturn')
+            self.end('loser')
         #else:
         #    self.update_gfx()
 
     def end(self, status):
         self.send_all('kill:{},{}'.format(status, self.name))
+        self.game.world.removeRigidBody(self.chassis)
         del self.game.players[self.name]
 
     def update_gfx(self):
@@ -662,6 +670,8 @@ class Robotab(Arena):
         if e['PATH_INFO'] == '/robotab':
             uwsgi.websocket_handshake()
             username, avatar = uwsgi.websocket_recv().split(':')
+            if username in self.players:
+                return
             try:
                 robot_coordinates = next(self.spawn_iterator)
             except StopIteration:
@@ -684,27 +694,30 @@ class Robotab(Arena):
             player = Player(self, username, avatar,
                             uwsgi.connection_fd(), *robot_coordinates)
 
-            #if(self.started or self.finished.is_set() or
-            #   len(self.players) > self.max_players or
-            #   len(self.waiting_players) > 0):
-            #    #print('{}:{}:{}:{}'.format(
-            #    #    self.started, self.finished,
-            #    #    len(self.players) > self.max_players,
-            #    #    len(self.waiting_players) > 0))
+            if(self.started or self.finished.is_set() or
+               len(self.players) > self.max_players or
+               len(self.waiting_players) > 0):
+                #print('{}:{}:{}:{}'.format(
+                #    self.started, self.finished,
+                #    len(self.players) > self.max_players,
+                #    len(self.waiting_players) > 0))
 
-            #    self.waiting_players.append(player)
-            #    uwsgi.websocket_send(
-            #        "arena:hey {}, wait for next game".format(player.name))
-            #    player.wait_for_game()
-            #    self.waiting_players.remove(player)
-            #else:
-            #    self.players[player.name] = player
-            self.players[player.name] = player
+                self.waiting_players.append(player)
+                uwsgi.websocket_send(
+                    "arena:hey {}, wait for next game".format(player.name))
+                player.wait_for_game()
+                self.waiting_players.remove(player)
+            else:
+                self.players[player.name] = player
 
             self.spawn_greenlets()
 
             player.update_gfx()
-
+             
+            uwsgi.websocket_send(player.last_msg)   
+            
+            gevent.sleep(1)
+ 
             for p in self.players.keys():
                 uwsgi.websocket_send(self.players[p].last_msg)
            
