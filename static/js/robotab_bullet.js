@@ -30,14 +30,16 @@ var playerParticleSystem, playerPart;
 var shootingEngines = [];
 
 var objects = [
-    {texture: 'static/img/ROBO_01_TEXTURE.jpg', object: 'static/obj/ROBO_01_OK.obj', ref: undefined},
-    {texture: 'static/img/ROBO_02_TEXTURE.jpg', object: 'static/obj/ROBO_02_OK.obj', ref: undefined},
-    {texture: 'static/img/missile_texture.jpg', object: 'static/obj/missile.obj'   , ref: undefined},
-    {texture: 'static/img/muro_texture.jpg'   , object: 'static/obj/muro.obj'      , ref: undefined},
-    {texture: 'static/img/UVTORETTACOLOR.jpg' , object: 'static/obj/torretta.obj'  , ref: undefined},
-    {texture: undefined                       , object: 'static/obj/power.obj'     , ref: undefined, color:0xFF0000},
-    {texture: undefined                       , object: 'static/obj/heal.obj'      , ref: undefined, color:0x00FF00},
-    {texture: undefined                       , object: 'static/obj/haste.obj'     , ref: undefined, color:0x0000FF},
+    {texture: 'static/img/ROBO_01_TEXTURE.jpg', object: 'static/obj/ROBO_01.obj'                  , ref: undefined},
+    {texture: 'static/img/ROBO_02_TEXTURE.jpg', object: 'static/obj/ROBO_02.obj'                  , ref: undefined},
+    {texture: 'static/img/missile_texture.jpg', object: 'static/obj/missile.obj'                  , ref: undefined},
+    {texture: 'static/img/muro_texture.jpg'   , object: 'static/obj/muro.obj'                     , ref: undefined},
+    {texture: 'static/img/UVTORETTACOLOR2.jpg', object: 'static/obj/torretta.obj'                 , ref: undefined},
+    {texture: 'static/img/UVTORETTACOLOR2.jpg', object: 'static/obj/proiettile_palla.obj'         , ref: undefined},
+    {texture: 'static/img/UVTORETTACOLOR2.jpg', object: 'static/obj/proiettile_stellettaninja.obj', ref: undefined},
+    {texture: undefined                       , object: 'static/obj/power.obj'                    , ref: undefined, color:0xFF0000},
+    {texture: undefined                       , object: 'static/obj/heal.obj'                     , ref: undefined, color:0x00FF00},
+    {texture: undefined                       , object: 'static/obj/haste.obj'                    , ref: undefined, color:0x0000FF},
 ];
 
 var avatars = document.getElementsByClassName('choose_player');
@@ -60,7 +62,7 @@ for (i in avatars) {
 }
 
 function ws_recv(e) {
-    console.log(e.data);
+    //console.log(e.data);
     var items = e.data.split(':');
     if (items[0] == 'arena') {
         var args = items[1].split(',');
@@ -84,26 +86,25 @@ function ws_recv(e) {
         return;
     }
     if (items[0] == '!') {
+        console.log(e.data);
         var player = players[items[1]];
         if (player == undefined) {
             return;
         }
-
         var args = items[2].split(',');
-        player.bullet.ws['x'] = args[0];
-        player.bullet.ws['y'] = args[1];
-        player.bullet.ws['z'] = args[2];
-        player.bullet.ws['rot_x'] = args[3];
-        player.bullet.ws['rot_y'] = args[4];
-        player.bullet.ws['rot_z'] = args[5];
-        player.bullet.ws['rot_w'] = args[6];
+        player.bullet.ws['x'] = parseInt(args[0]);
+        player.bullet.ws['y'] = parseInt(args[1]);
+        player.bullet.ws['z'] = parseInt(args[2]);
+        player.bullet.ws['rot_x'] = parseFloat(args[3]);
+        player.bullet.ws['rot_y'] = parseFloat(args[4]);
+        player.bullet.ws['rot_z'] = parseFloat(args[5]);
+        player.bullet.ws['rot_w'] = parseFloat(args[6]);
         player.bullet.ws['R'] = parseFloat(args[7]);
         player.bullet.dirty = true;
         return;
     }
 
     if (items[0] == 'kill'){
-
         var args = items[1].split(',');
         if (args[0] == 'winner'){
             players[args[1]].name_and_energy = players[args[1]].name + ': Winner';
@@ -119,7 +120,6 @@ function ws_recv(e) {
         }
         else if (args[0] == 'leaver'){
             players[args[1]].name_and_energy = players[args[1]].name + ': Leaver';
-
         }
         draw_hud_div(players[args[1]]);
         if (args[1] == me){
@@ -169,9 +169,9 @@ function ws_recv(e) {
             add_sphere(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
         }
         else{
-            moving_sphere.ws['x'] = args[1];
-            moving_sphere.ws['y'] = args[2];
-            moving_sphere.ws['z'] = args[3];
+            moving_sphere.ws['x'] = parseInt(args[1]);
+            moving_sphere.ws['y'] = parseInt(args[2]);
+            moving_sphere.ws['z'] = parseInt(args[3]);
             moving_sphere.ws['rot_x'] = parseFloat(args[4]);
             moving_sphere.ws['rot_y'] = parseFloat(args[5]);
             moving_sphere.ws['rot_z'] = parseFloat(args[6]);
@@ -306,9 +306,6 @@ function init(){
     scene.add(particleSystem);
 
     var manager = new THREE.LoadingManager();
-    manager.onProgress = function ( item, loaded, total ) {
-        // console.log( item, loaded, total );
-    };
 
     loadObjects3d(objects, 0, manager);
 }
@@ -327,9 +324,6 @@ function start_the_world() {
     stats.domElement.style.left = '0px';
     stats.domElement.style.bottom = '0px';
     document.getElementById('ThreeJS').appendChild(stats.domElement);
-    //objects[4].ref.scale.set(7, 7, 7);
-    //objects[4].ref.position.set(50, 50, 0);
-    //scene.add(objects[4].ref);
     //document.body.appendChild( stats.domElement );
 }
 
@@ -452,16 +446,16 @@ function update(td) {
 */
     }
     if (moving_sphere != undefined && moving_sphere.dirty){
+        moving_sphere.dirty = false;
         moving_sphere.position.set(
-            parseFloat(moving_sphere.ws['x']),
-            parseFloat(moving_sphere.ws['y']),
-            parseFloat(moving_sphere.ws['z']));
+            moving_sphere.ws['x'],
+            moving_sphere.ws['y'],
+            moving_sphere.ws['z']);
         moving_sphere.quaternion.set(
             moving_sphere.ws['rot_x'],
             moving_sphere.ws['rot_y'],
             moving_sphere.ws['rot_z'],
             moving_sphere.ws['rot_w']);
-        moving_sphere.dirty = false;
     }
 
     Object.keys(bonus_malus).forEach(function(key){
@@ -504,12 +498,6 @@ function update(td) {
 
         if (player.dirty) {
             draw_hud_div(player);
-            //player.rotation.setFromQuaternion(
-            //    new THREE.Quaternion(
-            //        player.ws['rot_x'],
-            //        player.ws['rot_y'],
-            //        player.ws['rot_z'],
-            //        player.ws['rot_w']));
             player.quaternion.set(
                 player.ws['rot_x'],
                 player.ws['rot_y'],
@@ -595,12 +583,21 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
     // console.log('add_player');
     if (avatar == 1){
         players[name] = objects[0].ref.clone();
+        var bullet = objects[5].ref.clone();
     }
     else{
         players[name] = objects[1].ref.clone();
+        var bullet = objects[6].ref.clone();
     }
     players[name].children[0].material = players[name].children[0].material.clone()
     players[name].children[0].material.color.setHex(color);
+    bullet.children[0].material = bullet.children[0].material.clone()
+    bullet.children[0].material.color.setHex(color);
+    bullet.visible = false;
+    bullet.ws = {};
+    bullet.scale.set(sc_x*2, sc_y*2, sc_z*2);
+    players[name].ws = {'velocity': 0};
+    players[name].bullet = bullet;
     players[name].name = name;
     players[name].scale.set(sc_x, sc_y, sc_z);
     players[name].energy = energy;
@@ -655,30 +652,13 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
     shootingEngines.push(playerEngineGroup);
     players[name].add(playerEngineGroup.mesh);
 
-    var geometry = new THREE.SphereGeometry( 3, 32, 32 );
-    var material = new THREE.MeshPhongMaterial({ transparent: true, opacity: 0.7});
-    material.color.setHex(color);
-    var bullet = new THREE.Mesh( geometry, material );
-
-    bullet.scale.set(sc_x, sc_y, sc_z);
+    //var geometry = new THREE.SphereGeometry( 3, 32, 32 );
+    //var material = new THREE.MeshPhongMaterial({ transparent: true, opacity: 0.7});
+    //material.color.setHex(color);
+    //var bullet = new THREE.Mesh( geometry, material );
+    //bullet.scale.set(sc_x, sc_y, sc_z);
     //bullet.children[0].visible = false;
-    bullet.visible = false;
-    bullet.useQuaternion = true;
-    //var axis = new THREE.Vector3(0, 1, 0);
-    //bullet.rotateOnAxis(axis, 90);
-    scene.add(bullet);
-    bullet.ws = {};
-    players[name].bullet = bullet;
-
-    players[name].ws = {
-        'x': 0.0,
-        'y': 0.0,
-        'z': 0.0,
-        'rot_x': 0.0,
-        'rot_y': 0.0,
-        'rot_z': 0.0,
-        'rot_w': 0.0,
-    };
+    //bullet.useQuaternion = true;
 
     var player_hud = document.createElement('div');
     player_hud.id = 'player_' + name;
@@ -711,14 +691,13 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
 
         health = document.getElementById('health');
         particleSystem.visible = true;
-
     }
-
     players[name].position.x = x;
     players[name].position.y = y;
     players[name].position.z = z;
     players[name].quaternion.set(rot_x, rot_y, rot_z, rot_w);
     scene.add(players[name]);
+    scene.add(bullet);
 }
 
 
@@ -732,13 +711,13 @@ function remove_player(player){
 
 function add_bonus_malus(id, bm_type, x, y, z){
     if (bm_type == 'power') {
-        bonus_malus[id] = objects[5].ref.clone();
+        bonus_malus[id] = objects[7].ref.clone();
     }
     else if (bm_type == 'heal') {
-        bonus_malus[id] = objects[6].ref.clone();
+        bonus_malus[id] = objects[8].ref.clone();
     }
     else if (bm_type == 'haste') {
-        bonus_malus[id] = objects[7].ref.clone();
+        bonus_malus[id] = objects[9].ref.clone();
     }
     else {
         return;
@@ -762,19 +741,10 @@ function add_sphere(radius, x, y, z, rot_x, rot_y, rot_z, rot_w){
     var sphereMaterial = new THREE.MeshPhongMaterial({map: sphereTexture});
     moving_sphere = new THREE.Mesh(geometry, sphereMaterial);
     moving_sphere.position.set(x, y, z);
-    moving_sphere.useQuaternion = true;
+    //moving_sphere.useQuaternion = true;
     moving_sphere.quaternion.set(rot_x, rot_y, rot_z, rot_w);
-    moving_sphere.ws = {
-        'x': 0.0,
-        'y': 0.0,
-        'z': 0.0,
-        'rot_x': 0.0,
-        'rot_y': 0.0,
-        'rot_z': 0.0,
-        'rot_w': 0.0,
-    };
+    moving_sphere.ws = {};
     scene.add(moving_sphere);
-    //console.log(moving_sphere);
 }
 
 function add_ground(size_x, size_y, size_z, x, y, z, r) {
@@ -827,12 +797,10 @@ function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
         var posterTexture = new THREE.ImageUtils.loadTexture( texture_name );
         posterTexture.needsUpdate = true;
         var posterMaterial = new THREE.MeshBasicMaterial( { map: posterTexture, side: THREE.DoubleSide} );
-        //var posterMaterial = new THREE.MeshPhongMaterial( { color: 0xff0000, side: THREE.DoubleSide } );
         var posterGeometry = new THREE.PlaneGeometry(200, 250);
         var poster = new THREE.Mesh(posterGeometry, posterMaterial);
         poster.position.set(parseInt(x), parseInt(y), parseInt(z));
         poster.rotation.y = parseFloat(r);
-        //console.log(poster.rotation.y);
     if (sc_x == 200) {
             if (poster.rotation.y < 0) {
                 poster.position.x -= 48;
@@ -850,7 +818,6 @@ function add_wall(sc_x, sc_y, sc_z, x, y, z, r) {
         }
         }
         poster.position.y += 50;
-        //console.log(poster);
         scene.add(poster);
     }
     //muro.receiveShadow = true;
@@ -873,7 +840,6 @@ function draw_hud_div(player) {
 
 function go_fullscreen() {
     // console.log('go_fullscreen');
-
     if (!THREEx.FullScreen.activated()) {
         THREEx.FullScreen.request(document.getElementById('ThreeJS'));
     }
@@ -881,7 +847,7 @@ function go_fullscreen() {
 
 function loadObjects3d(objects3d, index, manager){
     if (index >= objects3d.length){
-        objects[0].useQuaternion = true;
+        //objects[0].useQuaternion = true;
         objects[3].ref.children[0].material.transparent = true;
         // objects[3].ref.frustumCulled = false;
         start_websocket();

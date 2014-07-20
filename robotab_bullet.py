@@ -78,7 +78,7 @@ class ArenaSphere(Sphere, ArenaObject):
 
 class Bullet(Sphere):
     
-    def __init__(self, game, player, damage=10, speed=50, _range=1500.0):
+    def __init__(self, game, player, damage=10, speed=75, _range=1500):
         super(Bullet, self).__init__(game.world, radius=30, mass=0.0)
         self.body.setCollisionFlags(self.body.getCollisionFlags() | 2)
         self.body.setActivationState(4)
@@ -90,7 +90,6 @@ class Bullet(Sphere):
         self.q = Quaternion(0, 0, 0, 0)
         self.speed = speed
         self.distance = self._range
-        self.is_shooting = False
 
     def shoot(self):
         if self.distance != self._range:
@@ -100,14 +99,15 @@ class Bullet(Sphere):
         self.distance -= 1
         trans = Transform()
         trans.setIdentity()
-        #direction = self.q.quatRotate(self.player.trans.getRotation(), self.v)
-        #v = Vector3(
-        #    direction.getX()*50,
-        #    direction.getY()*50,
-        #    direction.getZ()*50)
-        trans.setOrigin(self.player.origin)
+        direction = self.q.quatRotate(self.player.trans.getRotation(), self.v)
+        v = Vector3(
+            direction.getX()*75,
+            direction.getY()*75,
+            direction.getZ()*75)
+        trans.setOrigin(self.player.origin + v)
         self.motion_state.setWorldTransform(trans)
         self.player.damage(1.0, 'himself')
+        self.motion_state.getWorldTransform(self.trans)
         self.game.bullets.append(self)
     
     def animate(self):
@@ -115,6 +115,7 @@ class Bullet(Sphere):
             self.game.bullets.remove(self)
             self.distance = self._range
             return
+        self.distance -= self.speed 
         trans = Transform()
         trans.setIdentity()
         direction = self.q.quatRotate(self.player.trans.getRotation(), self.v)
@@ -123,8 +124,9 @@ class Bullet(Sphere):
             direction.getY()*self.speed,
             direction.getZ()*self.speed)
         trans.setOrigin(self.origin + v)
+        q = Quaternion(0, -0.3, 0, 1) * self.trans.getRotation()
+        trans.setRotation(q)
         self.motion_state.setWorldTransform(trans)
-        self.distance -= self.speed 
         self.update_gfx()
    
     def update_gfx(self):
@@ -142,7 +144,7 @@ class Bullet(Sphere):
                '{distance}').format(
             name=self.player.name,
             pos_x=int(pos_x),
-            pos_y=int(pos_y)+30,
+            pos_y=int(pos_y),
             pos_z=int(pos_z),
             rot_x=rot_x + 0.0,
             rot_y=rot_y + 0.0,
@@ -253,8 +255,8 @@ class Arena(object):
         )
         
         self.ramps_coordinates = (
-             (350,     10,    700, -1635,     172, -2679,  math.pi/12),
-             (350,     10,    700,  1635,     172, -2679,  math.pi/12),
+             (350,     10,    700, -1650,     172, -2679,  math.pi/12),
+             (350,     10,    700,  1650,     172, -2679,  math.pi/12),
              (350,     10,    500,     0,     370, -7000,  math.pi/10)
         )
 
@@ -362,19 +364,19 @@ class Arena(object):
             return True
 
         if cmd == 'fw':
-            player.vehicle.applyEngineForce(1000.0, 0)
-            player.vehicle.applyEngineForce(1000.0, 1)
-            player.vehicle.applyEngineForce(1000.0, 2)
-            player.vehicle.applyEngineForce(1000.0, 3)
+            player.vehicle.applyEngineForce(800.0, 0)
+            player.vehicle.applyEngineForce(800.0, 1)
+            player.vehicle.applyEngineForce(800.0, 2)
+            player.vehicle.applyEngineForce(800.0, 3)
             player.is_accelerating = True
             player.is_braking = False
             return True
 
         if cmd == 'bw':
-            player.vehicle.applyEngineForce(-1000.0, 0)
-            player.vehicle.applyEngineForce(-1000.0, 1)
-            player.vehicle.applyEngineForce(-1000.0, 2)
-            player.vehicle.applyEngineForce(-1000.0, 3)
+            player.vehicle.applyEngineForce(-800.0, 0)
+            player.vehicle.applyEngineForce(-800.0, 1)
+            player.vehicle.applyEngineForce(-800.0, 2)
+            player.vehicle.applyEngineForce(-800.0, 3)
             player.is_accelerating = True
             player.is_braking = False
             return True
