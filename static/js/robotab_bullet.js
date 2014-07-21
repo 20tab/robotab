@@ -62,7 +62,7 @@ for (i in avatars) {
 }
 
 function ws_recv(e) {
-    console.log(e.data);
+    //console.log(e.data);
     var items = e.data.split(':');
     if (items[0] == 'arena') {
         var args = items[1].split(',');
@@ -86,7 +86,7 @@ function ws_recv(e) {
         return;
     }
     if (items[0] == '!') {
-        console.log(e.data);
+        //console.log(e.data);
         var player = players[items[1]];
         if (player == undefined) {
             return;
@@ -166,7 +166,15 @@ function ws_recv(e) {
     if (items[0] == 'sphere'){
         var args = items[1].split(',');
         if (moving_sphere == undefined){
-            add_sphere(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
+            add_sphere(
+                parseInt(args[0]),
+                parseInt(args[1]),
+                parseInt(args[2]), 
+                parseInt(args[3]),
+                parseFloat(args[4]),
+                parseFloat(args[5]),
+                parseFloat(args[6]),
+                parseFloat(args[7]));
         }
         else{
             moving_sphere.ws['x'] = parseInt(args[1]);
@@ -734,7 +742,7 @@ function remove_bonus_malus(id){
 }
 
 function add_sphere(radius, x, y, z, rot_x, rot_y, rot_z, rot_w){
-    var geometry = new THREE.SphereGeometry(40, 16, 16);//parseInt(radius), 16, 16);
+    var geometry = new THREE.SphereGeometry(radius, 16, 16);//parseInt(radius), 16, 16);
     var sphereTexture = new THREE.ImageUtils.loadTexture('static/img/skel.jpg');
     sphereTexture.repeat.set(1, 1);
     sphereTexture.wrapS = sphereTexture.wrapT = THREE.RepeatWrapping;
