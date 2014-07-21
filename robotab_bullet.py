@@ -254,7 +254,7 @@ class Arena(object):
         self.ramps_coordinates = (
              (350,     10,    700, -1650,     172, -2679,  math.pi/12),
              (350,     10,    700,  1650,     172, -2679,  math.pi/12),
-             (350,     10,    500,     0,     300, -7000,  math.pi/10)
+             (350,     10,    500,     0,     330, -7000,  math.pi/12)
         )
 
         self.spawn_points = (
@@ -393,6 +393,10 @@ class Arena(object):
         del self.greenlets['engine']
         print('engine started')
         self.world.setInternalTickCallback(self.cb, 17)
+        self.sphere.trans.setOrigin(Vector3(0, 50, 0))
+        self.sphere.body.setLinearVelocity(Vector3(0, 0, 0))
+        self.sphere.body.setAngularVelocity(Vector3(0, 0, 0))
+        self.sphere.body.setWorldTransform (self.sphere.trans)
         while True:
             t = uwsgi.micros() / 1000.0
             if not self.debug: 
@@ -590,7 +594,6 @@ class Player(ArenaObject):
         if not self.game.started:
             return
         self.energy -= amount
-        print(self.energy)
         if self.energy <= 0:
             if attacker:
                 self.game.broadcast(
