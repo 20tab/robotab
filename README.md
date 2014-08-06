@@ -1,4 +1,3 @@
-robotab
+Robotab
 =======
-
-Next 20Tab html5 multiplayer game (WebGL powered)
+Source code of [Robotab](http://robotab.20tab.com), an HTML5 multiplayer game demo by [20tab](http://20tab.com)
