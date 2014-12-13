@@ -121,15 +121,15 @@ h2.winner{
 
 #arrows{
     position: absolute;
-    bottom:250;
-    right: 175;
+    bottom:250px;
+    right: 175px;
     opacity: 0.6;
 }
 
 .arrow {
     position: inherit;
-    width: 0;
-    height: 0;
+    width: 0px;
+    height: 0px;
     border-style: solid;
 }
 
@@ -140,42 +140,42 @@ h2.winner{
 
 #arrow-top:active {
     border-color: transparent transparent #ff9900 transparent;
-    top: 1;
+    top: 1px;
 }
 
 #arrow-bot {
-    top: 141;
+    top: 141px;
     border-width: 65.0px 37.5px 0 37.5px;
     border-color: #000000 transparent transparent transparent;
 }
 
 #arrow-bot:active {
     border-color: #ff9900 transparent transparent transparent;
-    top: 142;
+    top: 142px;
 }
 
 #arrow-right {
-    left: 76;
-    top: 66;
+    left: 76px;
+    top: 66px;
     border-width: 37.5px 0 37.5px 65.0px;
     border-color: transparent transparent transparent #000000;
 }
 
 #arrow-right:active {
     border-color: transparent transparent transparent #ff9900;
-    top: 67;
+    top: 67px;
 }
 
 #arrow-left {
-    left: -67;
-    top: 66;
+    left: -67px;
+    top: 66px;
     border-width: 37.5px 65.0px 37.5px 0;
     border-color: transparent #000000 transparent transparent;
 }
 
 #arrow-left:active {
     border-color: transparent #ff9900 transparent transparent;
-    top: 67;
+    top: 67px;
 }
 
 .zoom {
@@ -193,19 +193,19 @@ h2.winner{
 }
 
 #zoom-in {
-    top: 67;
+    top: 67px;
 }
 
 #zoom-in:active{
-    top:68;
+    top:68px;
 }
 
 #zoom-out {
-    top:104;
+    top:104px;
 }
 
 #zoom-out:active{
-    top:105;
+    top:105px;
 }
 
 .unselectable {
@@ -220,8 +220,7 @@ h2.winner{
 #healthbar {
     border: solid 2px;
     position: absolute;
-    bottom: 125;
-    margin-left: calc(50% - 100px);
+    bottom: 125px;
     /* Firefox */
     margin-left: -moz-calc(50% - 100px);
     /* WebKit */
