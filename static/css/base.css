@@ -16,6 +16,17 @@ body {
     font: 20px Impact;
     color: white;
 }
+#players_hud {
+    top: 20px;
+    position: absolute;
+    right: 20px;
+    list-style-type: none;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.6);
+    margin: 0px;
+    border-radius: 10px;
+    width: 300px;
+}
 
 #username_div {
     color: #ff9900;
@@ -234,9 +245,10 @@ h2.winner{
 }
 
 .players_energy{
-    line-height:150px;
     font:20px Impact;
     color:red;
-    position:absolute;
-    margin-left:70%;
+    position:relative;
+    border-bottom: 1px solid;
+    border-top: 1px solid;
+    margin: 3px;
 }

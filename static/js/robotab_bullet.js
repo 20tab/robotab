@@ -690,12 +690,12 @@ function add_player(name, x, y, z, rot_x, rot_y, rot_z, rot_w, energy, avatar, s
         particleSystem.visible = true;
     }
     if (starting){
-        var player_hud = document.createElement('div');
+        var player_hud = document.createElement('li');
         player_hud.id = 'player_' + name;
-        player_hud.setAttribute('style', "top:" + hud_pos + "px");
+        //player_hud.setAttribute('style', "top:" + hud_pos + "px");
         player_hud.className = 'players_energy';
         hud_pos += 20;
-        document.getElementById('ThreeJS').appendChild(player_hud);
+        document.getElementById('players_hud').appendChild(player_hud);
         players[name].hud = player_hud;
         draw_hud_div(players[name]);
     }
